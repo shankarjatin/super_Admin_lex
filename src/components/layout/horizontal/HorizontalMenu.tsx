@@ -78,11 +78,35 @@ const HorizontalMenu = () => {
           menuSectionStyles: verticalMenuSectionStyles(verticalNavOptions, theme)
         }}
       >
-        <MenuItem href='/' icon={<i className='tabler-smart-home' />}>
-          Home
+        <MenuItem href='/dashboard' icon={<i className='tabler-smart-home' />}>
+          DASHBOARD
         </MenuItem>
-        <MenuItem href='/about' icon={<i className='tabler-info-circle' />}>
-          About
+        <MenuItem href='/act-master' icon={<i className='tabler-info-circle' />}>
+          ACT MASTER
+        </MenuItem>
+        <MenuItem href='/compilance-master' icon={<i className='tabler-info-circle' />}>
+          COMPLIANCE MASTER
+        </MenuItem>
+        <MenuItem href='/event-generate' icon={<i className='tabler-info-circle' />}>
+          EVENT GENERATE
+        </MenuItem>
+        <MenuItem href='/add-act-type' icon={<i className='tabler-info-circle' />}>
+          ADD ACT TYPE
+        </MenuItem>
+        <MenuItem href='/no-mail' icon={<i className='tabler-info-circle' />}>
+          NO MAIL
+        </MenuItem>
+        <MenuItem href='/due-date-pattern' icon={<i className='tabler-info-circle' />}>
+          DUE DATE PATTERN
+        </MenuItem>
+        <MenuItem href='/due-date-change' icon={<i className='tabler-info-circle' />}>
+          DUE DATE CHANGE
+        </MenuItem>
+        <MenuItem href='/act-wise-email' icon={<i className='tabler-info-circle' />}>
+          ACT WISE EMAIL
+        </MenuItem>
+        <MenuItem href='/update-compilance' icon={<i className='tabler-info-circle' />}>
+          UPDATE COMPILANCE
         </MenuItem>
       </Menu>
       {/* <Menu
