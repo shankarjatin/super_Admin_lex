@@ -27,32 +27,41 @@ import CustomInputVertical from '@core/components/custom-inputs/Vertical'
 import DialogCloseButton from '../DialogCloseButton'
 import CustomTextField from '@core/components/mui/TextField'
 
-type AddEditAddressData = {
+type AddEditActData = {
+  name?: string
   firstName?: string
   lastName?: string
+  actName?: string
   country?: string
-  address1?: string
-  address2?: string
+  act1?: string
+  act2?: string
   landmark?: string
   city?: string
   state?: string
   zipCode?: string
+  description?: string
+  url?: string
+  category?: string
+  type?: string
+  continent?: string
+  region?: string
+  subject1?: string
 }
 
-type AddEditAddressProps = {
+type AddEditActProps = {
   open: boolean
   setOpen: (open: boolean) => void
-  data?: AddEditAddressData
+  data?: AddEditActData
 }
 
 const countries = ['Select Country', 'France', 'Russia', 'China', 'UK', 'US']
 
-const initialAddressData: AddEditAddressProps['data'] = {
+const initialActData: AddEditActProps['data'] = {
   firstName: '',
   lastName: '',
   country: '',
-  address1: '',
-  address2: '',
+  act1: '',
+  act2: '',
   landmark: '',
   city: '',
   state: '',
@@ -75,13 +84,13 @@ const customInputData: CustomInputVerticalData[] = [
   }
 ]
 
-const AddEditAddress = ({ open, setOpen, data }: AddEditAddressProps) => {
+const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
   // Vars
   const initialSelected: string = customInputData?.find(item => item.isSelected)?.value || ''
 
   // States
   const [selected, setSelected] = useState<string>(initialSelected)
-  const [addressData, setAddressData] = useState<AddEditAddressProps['data']>(initialAddressData)
+  const [actData, setActData] = useState<AddEditActProps['data']>(initialActData)
 
   const handleChange = (prop: string | ChangeEvent<HTMLInputElement>) => {
     if (typeof prop === 'string') {
@@ -92,7 +101,7 @@ const AddEditAddress = ({ open, setOpen, data }: AddEditAddressProps) => {
   }
 
   useEffect(() => {
-    setAddressData(data ?? initialAddressData)
+    setActData(data ?? initialActData)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
@@ -108,9 +117,9 @@ const AddEditAddress = ({ open, setOpen, data }: AddEditAddressProps) => {
       sx={{ '& .MuiDialog-paper': { overflow: 'visible' } }}
     >
       <DialogTitle variant='h4' className='flex gap-2 flex-col text-center sm:pbs-16 sm:pbe-6 sm:pli-16'>
-        {data ? 'Edit Address' : 'Add New Address'}
+        {data ? 'Edit Act' : 'Add New Act'}
         <Typography component='span' className='flex flex-col text-center'>
-          {data ? 'Edit Address for future billing' : 'Add address for billing address'}
+          {data ? 'Edit Act for future billing' : 'Add act for billing act'}
         </Typography>
       </DialogTitle>
       <form onSubmit={e => e.preventDefault()}>
@@ -119,134 +128,120 @@ const AddEditAddress = ({ open, setOpen, data }: AddEditAddressProps) => {
             <i className='tabler-x' />
           </DialogCloseButton>
           <Grid container spacing={6}>
-            {customInputData.map((item, index) => {
-              let asset
-
-              if (item.asset && typeof item.asset === 'string') {
-                asset = <i className={classnames(item.asset, 'text-[28px]')} />
-              }
-
-              return (
-                <Grid item xs={12} sm={6} key={index}>
-                  <CustomInputVertical
-                    type='radio'
-                    key={index}
-                    data={{ ...item, asset }}
-                    selected={selected}
-                    name='addressType'
-                    handleChange={handleChange}
-                  />
-                </Grid>
-              )
-            })}
             <Grid item xs={12} sm={6}>
               <CustomTextField
                 fullWidth
-                label='First Name'
-                name='firstName'
-                variant='outlined'
-                placeholder='John'
-                value={addressData?.firstName}
-                onChange={e => setAddressData({ ...addressData, firstName: e.target.value })}
+                label='Name'
+                name='name'
+                required
+                placeholder='Enter Name'
+                value={actData?.name}
+                onChange={e => setActData({ ...actData, name: e.target.value })}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <CustomTextField
                 fullWidth
-                label='Last Name'
-                name='lastName'
-                variant='outlined'
-                placeholder='Doe'
-                value={addressData?.lastName}
-                onChange={e => setAddressData({ ...addressData, lastName: e.target.value })}
+                label='Act Name'
+                name='actName'
+                placeholder='Enter Act Name'
+                value={actData?.actName}
+                onChange={e => setActData({ ...actData, actName: e.target.value })}
               />
             </Grid>
             <Grid item xs={12}>
+              <CustomTextField
+                fullWidth
+                multiline
+                required
+                rows={4}
+                label='Description'
+                name='description'
+                placeholder='Act Description'
+                inputProps={{ maxLength: 220 }}
+                value={actData?.description}
+                onChange={e => setActData({ ...actData, description: e.target.value })}
+              />
+              <Typography variant='caption' className='text-right block'>
+                {220 - (actData?.description?.length || 0)} chars left
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <CustomTextField
+                fullWidth
+                label='URL'
+                name='url'
+                placeholder='http://www.XYZ.com'
+                value={actData?.url}
+                onChange={e => setActData({ ...actData, url: e.target.value })}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
               <CustomTextField
                 select
                 fullWidth
-                label='Country'
-                name='country'
-                variant='outlined'
-                value={addressData?.country?.toLowerCase().replace(/\s+/g, '-') || ''}
-                onChange={e => setAddressData({ ...addressData, country: e.target.value })}
+                label='Category'
+                name='category'
+                required
+                value={actData?.category || ''}
+                onChange={e => setActData({ ...actData, category: e.target.value })}
               >
-                {countries.map((item, index) => (
-                  <MenuItem key={index} value={index === 0 ? '' : item.toLowerCase().replace(/\s+/g, '-')}>
-                    {item}
-                  </MenuItem>
-                ))}
+                <MenuItem value='internal'>Internal</MenuItem>
+                <MenuItem value='external'>External</MenuItem>
               </CustomTextField>
             </Grid>
+            <Grid item xs={12} sm={6}>
+              <CustomTextField
+                select
+                fullWidth
+                label='Continent'
+                name='continent'
+                required
+                value={actData?.continent || ''}
+                onChange={e => setActData({ ...actData, continent: e.target.value })}
+              >
+                <MenuItem value='asia'>Asia</MenuItem>
+                <MenuItem value='europe'>Europe</MenuItem>
+                <MenuItem value='north-america'>North America</MenuItem>
+                <MenuItem value='south-america'>South America</MenuItem>
+                <MenuItem value='australia'>Australia</MenuItem>
+                <MenuItem value='africa'>Africa</MenuItem>
+              </CustomTextField>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <CustomTextField
+                select
+                fullWidth
+                label='Type'
+                name='type'
+                required
+                value={actData?.type || ''}
+                onChange={e => setActData({ ...actData, type: e.target.value })}
+              >
+                <MenuItem value='central'>Central</MenuItem>
+                <MenuItem value='state'>State</MenuItem>
+              </CustomTextField>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <CustomTextField
+                fullWidth
+                label='Region (Optional)'
+                name='region'
+                placeholder='Enter Region'
+                value={actData?.region || ''}
+                onChange={e => setActData({ ...actData, region: e.target.value })}
+              />
+            </Grid>
             <Grid item xs={12}>
               <CustomTextField
                 fullWidth
-                label='Address Line 1'
-                name='address1'
-                variant='outlined'
-                placeholder='12, Business Park'
-                value={addressData?.address1}
-                onChange={e => setAddressData({ ...addressData, address1: e.target.value })}
+                required
+                label='Subject 1'
+                name='subject1'
+                placeholder='Enter Subject'
+                value={actData?.subject1 || ''}
+                onChange={e => setActData({ ...actData, subject1: e.target.value })}
               />
-            </Grid>
-            <Grid item xs={12}>
-              <CustomTextField
-                fullWidth
-                label='Address Line 2'
-                name='address1'
-                variant='outlined'
-                placeholder='Mall Road'
-                value={addressData?.address2}
-                onChange={e => setAddressData({ ...addressData, address2: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <CustomTextField
-                fullWidth
-                label='Landmark'
-                name='landmark'
-                variant='outlined'
-                placeholder='Nr. Hard Rock Cafe'
-                value={addressData?.landmark}
-                onChange={e => setAddressData({ ...addressData, landmark: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <CustomTextField
-                fullWidth
-                label='City'
-                name='city'
-                variant='outlined'
-                placeholder='Los Angeles'
-                value={addressData?.city}
-                onChange={e => setAddressData({ ...addressData, city: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <CustomTextField
-                fullWidth
-                label='State'
-                name='state'
-                variant='outlined'
-                placeholder='California'
-                value={addressData?.state}
-                onChange={e => setAddressData({ ...addressData, state: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <CustomTextField
-                fullWidth
-                label='Zip Code'
-                type='number'
-                name='zipCode'
-                variant='outlined'
-                placeholder='99950'
-                value={addressData?.zipCode}
-                onChange={e => setAddressData({ ...addressData, zipCode: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel control={<Switch defaultChecked />} label='Make this default shipping address' />
             </Grid>
           </Grid>
         </DialogContent>
@@ -271,4 +266,4 @@ const AddEditAddress = ({ open, setOpen, data }: AddEditAddressProps) => {
   )
 }
 
-export default AddEditAddress
+export default AddEditAct

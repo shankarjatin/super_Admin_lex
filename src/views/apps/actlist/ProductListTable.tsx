@@ -56,6 +56,8 @@ import { getLocalizedUrl } from '@/utils/i18n'
 
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
+import AddEditAddress from '@/components/dialogs/add-edit-address'
+import AddEditAct from '@/components/dialogs/add-edit-address'
 
 declare module '@tanstack/table-core' {
   interface FilterFns {
@@ -148,6 +150,7 @@ const columnHelper = createColumnHelper<ProductWithActionsType>()
 const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
   // States
   const [rowSelection, setRowSelection] = useState({})
+  const [openModal, setOpenModal] = useState(false)
   const [data, setData] = useState(...[productData])
   const [filteredData, setFilteredData] = useState(data)
   const [globalFilter, setGlobalFilter] = useState('')
@@ -325,9 +328,9 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
             </Button>
             <Button
               variant='contained'
-              component={Link}
               className='max-sm:is-full is-auto'
-              href={getLocalizedUrl('/apps/ecommerce/products/add', locale as Locale)}
+              onClick={() => setOpenModal(true)}
+              // href={getLocalizedUrl('/apps/ecommerce/products/add', locale as Locale)}
               startIcon={<i className='tabler-plus' />}
             >
               Add Product
@@ -399,6 +402,7 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
           }}
         />
       </Card>
+      <AddEditAct open={openModal} setOpen={setOpenModal} />
     </>
   )
 }
