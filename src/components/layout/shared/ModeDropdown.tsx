@@ -63,12 +63,16 @@ const ModeDropdown = () => {
         title={settings.mode + ' Mode'}
         onOpen={() => setTooltipOpen(true)}
         onClose={() => setTooltipOpen(false)}
-        open={open ? false : tooltipOpen ? true : false}
+        open={open ? false : tooltipOpen}
         PopperProps={{ className: 'capitalize' }}
       >
-        <IconButton ref={anchorRef} onClick={handleToggle} className='text-textPrimary'>
-          <i className={getModeIcon()} />
-        </IconButton>
+        <span>
+          {' '}
+          {/* Wrap IconButton in a span to avoid ref forwarding issues */}
+          <IconButton onClick={handleToggle} className='text-textPrimary' ref={anchorRef}>
+            <i className={getModeIcon()} />
+          </IconButton>
+        </span>
       </Tooltip>
       <Popper
         open={open}
