@@ -84,8 +84,8 @@ const HorizontalMenu = () => {
         <MenuItem href='/act-master' icon={<i className='tabler-info-circle' />}>
           ACT MASTER
         </MenuItem>
-        <MenuItem href='/compilance-master' icon={<i className='tabler-info-circle' />}>
-          COMPLIANCE MASTER
+        <MenuItem href='/company-master' icon={<i className='tabler-info-circle' />}>
+          COMPANY MASTER
         </MenuItem>
         <MenuItem href='/event-generate' icon={<i className='tabler-info-circle' />}>
           EVENT GENERATE

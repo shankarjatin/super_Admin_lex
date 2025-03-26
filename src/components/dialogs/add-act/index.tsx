@@ -116,7 +116,7 @@ const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
       }}
       sx={{ '& .MuiDialog-paper': { overflow: 'visible' } }}
     >
-      <DialogTitle variant='h4' className='flex gap-2 flex-col text-center sm:pbs-16 sm:pbe-6 sm:pli-16'>
+      <DialogTitle variant='h4' className='flex gap-2 flex-col text-center sm:pbs-12 sm:pbe-6 sm:pli-12'>
         {data ? 'Edit Act' : 'Add New Act'}
         <Typography component='span' className='flex flex-col text-center'>
           {data ? 'Edit Act for future billing' : 'Add act for billing act'}
@@ -154,7 +154,7 @@ const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
                 fullWidth
                 multiline
                 required
-                rows={4}
+                rows={2}
                 label='Description'
                 name='description'
                 placeholder='Act Description'
@@ -166,7 +166,7 @@ const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
                 {220 - (actData?.description?.length || 0)} chars left
               </Typography>
             </Grid>
-            <Grid item xs={12}>
+            <Grid item xs={12} sm={6}>
               <CustomTextField
                 fullWidth
                 label='URL'
@@ -174,6 +174,17 @@ const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
                 placeholder='http://www.XYZ.com'
                 value={actData?.url}
                 onChange={e => setActData({ ...actData, url: e.target.value })}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <CustomTextField
+                fullWidth
+                required
+                label='Subject 1'
+                name='subject1'
+                placeholder='Enter Subject'
+                value={actData?.subject1 || ''}
+                onChange={e => setActData({ ...actData, subject1: e.target.value })}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -230,17 +241,6 @@ const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
                 placeholder='Enter Region'
                 value={actData?.region || ''}
                 onChange={e => setActData({ ...actData, region: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <CustomTextField
-                fullWidth
-                required
-                label='Subject 1'
-                name='subject1'
-                placeholder='Enter Subject'
-                value={actData?.subject1 || ''}
-                onChange={e => setActData({ ...actData, subject1: e.target.value })}
               />
             </Grid>
           </Grid>

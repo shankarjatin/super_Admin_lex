@@ -56,8 +56,11 @@ import { getLocalizedUrl } from '@/utils/i18n'
 
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
-import AddEditAddress from '@/components/dialogs/add-edit-address'
-import AddEditAct from '@/components/dialogs/add-edit-address'
+// import AddEditAddress from '@/components/dialogs/add-act'
+import AddEditAct from '@/components/dialogs/add-act'
+
+// Components
+import InternationalActTable from './InternationalActTable' // Create this component for international acts
 
 declare module '@tanstack/table-core' {
   interface FilterFns {
@@ -147,81 +150,54 @@ const productStatusObj: productStatusType = {
 // Column Definitions
 const columnHelper = createColumnHelper<ProductWithActionsType>()
 
-const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
+const ActListTable = ({ productData }: { productData?: ProductType[] }) => {
   // States
   const [rowSelection, setRowSelection] = useState({})
   const [openModal, setOpenModal] = useState(false)
   const [data, setData] = useState(...[productData])
   const [filteredData, setFilteredData] = useState(data)
   const [globalFilter, setGlobalFilter] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
 
   // Hooks
   const { lang: locale } = useParams()
 
   const columns = useMemo<ColumnDef<ProductWithActionsType, any>[]>(
     () => [
-      {
-        id: 'select',
-        header: ({ table }) => (
-          <Checkbox
-            {...{
-              checked: table.getIsAllRowsSelected(),
-              indeterminate: table.getIsSomeRowsSelected(),
-              onChange: table.getToggleAllRowsSelectedHandler()
-            }}
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            {...{
-              checked: row.getIsSelected(),
-              disabled: !row.getCanSelect(),
-              indeterminate: row.getIsSomeSelected(),
-              onChange: row.getToggleSelectedHandler()
-            }}
-          />
-        )
-      },
       columnHelper.accessor('productName', {
-        header: 'Product',
-        cell: ({ row }) => (
-          <div className='flex items-center gap-4'>
-            <img src={row.original.image} width={38} height={38} className='rounded bg-actionHover' />
-            <div className='flex flex-col'>
-              <Typography className='font-medium' color='text.primary'>
-                {row.original.productName}
-              </Typography>
-              <Typography variant='body2'>{row.original.productBrand}</Typography>
-            </div>
-          </div>
-        )
+        header: 'Id',
+        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
       }),
       columnHelper.accessor('category', {
-        header: 'Category',
+        header: 'Compliance Count',
         cell: ({ row }) => (
           <div className='flex items-center gap-4'>
-            <CustomAvatar skin='light' color={productCategoryObj[row.original.category].color} size={30}>
-              <i className={classnames(productCategoryObj[row.original.category].icon, 'text-lg')} />
-            </CustomAvatar>
             <Typography color='text.primary'>{row.original.category}</Typography>
           </div>
         )
       }),
-      columnHelper.accessor('stock', {
-        header: 'Stock',
-        cell: ({ row }) => <Switch defaultChecked={row.original.stock} />,
-        enableSorting: false
-      }),
       columnHelper.accessor('sku', {
-        header: 'SKU',
+        header: 'Type',
         cell: ({ row }) => <Typography>{row.original.sku}</Typography>
       }),
       columnHelper.accessor('price', {
-        header: 'Price',
+        header: 'Act name',
         cell: ({ row }) => <Typography>{row.original.price}</Typography>
       }),
       columnHelper.accessor('qty', {
-        header: 'QTY',
+        header: 'Act description',
+        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
+      }),
+      columnHelper.accessor('qty', {
+        header: 'Country',
+        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
+      }),
+      columnHelper.accessor('qty', {
+        header: 'Scope',
+        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
+      }),
+      columnHelper.accessor('qty', {
+        header: 'Subject',
         cell: ({ row }) => <Typography>{row.original.qty}</Typography>
       }),
       columnHelper.accessor('status', {
@@ -280,8 +256,7 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
         pageSize: 10
       }
     },
-    enableRowSelection: true, //enable row selection for all rows
-    // enableRowSelection: row => row.original.age > 18, // or enable row selection conditionally per row
+    enableRowSelection: true,
     globalFilterFn: fuzzyFilter,
     onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
@@ -294,49 +269,19 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
     getFacetedMinMaxValues: getFacetedMinMaxValues()
   })
 
-  return (
-    <>
-      <Card>
-        <CardHeader title='Filters' />
-        <TableFilters setData={setFilteredData} productData={data} />
-        <Divider />
-        <div className='flex flex-wrap justify-between gap-4 p-6'>
-          <DebouncedInput
-            value={globalFilter ?? ''}
-            onChange={value => setGlobalFilter(String(value))}
-            placeholder='Search Product'
-            className='max-sm:is-full'
-          />
-          <div className='flex flex-wrap items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>
-            <CustomTextField
-              select
-              value={table.getState().pagination.pageSize}
-              onChange={e => table.setPageSize(Number(e.target.value))}
-              className='flex-auto is-[70px] max-sm:is-full'
-            >
-              <MenuItem value='10'>10</MenuItem>
-              <MenuItem value='25'>25</MenuItem>
-              <MenuItem value='50'>50</MenuItem>
-            </CustomTextField>
-            <Button
-              color='secondary'
-              variant='tonal'
-              className='max-sm:is-full is-auto'
-              startIcon={<i className='tabler-upload' />}
-            >
-              Export
-            </Button>
-            <Button
-              variant='contained'
-              className='max-sm:is-full is-auto'
-              onClick={() => setOpenModal(true)}
-              // href={getLocalizedUrl('/apps/ecommerce/products/add', locale as Locale)}
-              startIcon={<i className='tabler-plus' />}
-            >
-              Add Product
-            </Button>
-          </div>
-        </div>
+  // Handle category change
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category)
+  }
+
+  // Decide which table to render based on selected category
+  const renderTableContent = () => {
+    if (selectedCategory === 'Accessories') {
+      // Show International Act Table
+      return <InternationalActTable data={filteredData ?? []} />
+    } else {
+      // Show Regular Table
+      return (
         <div className='overflow-x-auto'>
           <table className={tableStyles.table}>
             <thead>
@@ -392,6 +337,53 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
             )}
           </table>
         </div>
+      )
+    }
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader title='Filters' />
+        <TableFilters
+          setData={setFilteredData}
+          productData={data}
+          onCategoryChange={handleCategoryChange} // Pass the new callback
+        />
+        <Divider />
+        <div className='flex flex-wrap justify-between gap-4 p-6'>
+          {/* <DebouncedInput
+            value={globalFilter ?? ''}
+            onChange={value => setGlobalFilter(String(value))}
+            placeholder='Search Product'
+            className='max-sm:is-full'
+          /> */}
+          <div className='flex flex-wrap items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>
+            <CustomTextField
+              select
+              value={table.getState().pagination.pageSize}
+              onChange={e => table.setPageSize(Number(e.target.value))}
+              className='flex-auto is-[70px] max-sm:is-full'
+            >
+              <MenuItem value='10'>10</MenuItem>
+              <MenuItem value='25'>25</MenuItem>
+              <MenuItem value='50'>50</MenuItem>
+            </CustomTextField>
+
+            <Button
+              variant='contained'
+              className='max-sm:is-full is-auto'
+              onClick={() => setOpenModal(true)}
+              startIcon={<i className='tabler-plus' />}
+            >
+              Add act
+            </Button>
+          </div>
+        </div>
+
+        {/* Render different tables based on category selection */}
+        {renderTableContent()}
+
         <TablePagination
           component={() => <TablePaginationComponent table={table} />}
           count={table.getFilteredRowModel().rows.length}
@@ -407,4 +399,4 @@ const ProductListTable = ({ productData }: { productData?: ProductType[] }) => {
   )
 }
 
-export default ProductListTable
+export default ActListTable

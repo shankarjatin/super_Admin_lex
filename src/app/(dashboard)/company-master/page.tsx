@@ -8,6 +8,7 @@ import { getEcommerceData } from '@/app/server/actions'
 
 import ProductCard from '@/views/apps/act-master/ProductCard'
 import ActListTable from '@/views/apps/act-master/ActListTable'
+import CompanyMasterTable from '@/views/apps/company-master/CompanyMasterTable'
 
 /**
  * ! If you need data using an API call, uncomment the below API code, update the `process.env.API_URL` variable in the
@@ -33,11 +34,11 @@ const ActMaster = async () => {
 
   return (
     <Grid container spacing={6}>
-      <Grid item xs={12}>
+      {/* <Grid item xs={12}>
         <ProductCard />
-      </Grid>
+      </Grid> */}
       <Grid item xs={12}>
-        <ActListTable productData={data?.products} />
+        <CompanyMasterTable productData={data?.products} />
       </Grid>
     </Grid>
   )
