@@ -53,6 +53,13 @@ import TablePaginationComponent from '../../../components/TablePaginationCompone
 
 // Util Imports
 import { getLocalizedUrl } from '@/utils/i18n'
+import axios from 'axios'
+
+// Axios instance
+const axiosInstance = axios.create({
+  baseURL: 'https://ai.lexcomply.co/v2/api',
+  timeout: 10000
+})
 
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
@@ -60,6 +67,7 @@ import AddEditAct from '@/components/dialogs/add-act'
 
 // Components
 import InternationalActTable from './InternationalActTable'
+import EditAct from '@/components/dialogs/edit-act'
 
 declare module '@tanstack/table-core' {
   interface FilterFns {
@@ -167,18 +175,39 @@ const ActListTable = ({ productData }: { productData?: ProductType[] }) => {
   const [selectedCategory, setSelectedCategory] = useState('')
   const [editingRowId, setEditingRowId] = useState(null)
   const [rowData, setRowData] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   // Hooks
   const { lang: locale } = useParams()
 
   const fetchRowData = async id => {
+    if (!id) {
+      console.error('No act ID provided')
+      return
+    }
+
+    setIsLoading(true)
     try {
-      const response = await fetch(`https://ai.lexcomply.co/v2/api/actMaster/getInternationalAct?id=${id}`)
-      const data = await response.json()
-      console.log(data)
-      setRowData(data) // This can then be passed to the dialog
+      // Use axios instead of fetch for better error handling
+      const response = await axiosInstance.get(`https://ai.lexcomply.co/v2/api/actMaster/getInternationalAct?id=${id}`)
+
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        // Format the data if needed to match your EditAct component's expectations
+        const actData = response.data[0]
+        console.log('API Response:', actData)
+
+        // Set the data to pass to the modal
+        setRowData(actData)
+
+        // Set the editing ID which will open the modal (based on your existing logic)
+        setEditingRowId(id)
+      } else {
+        console.error('Failed to fetch act details: No data returned')
+      }
     } catch (error) {
-      console.error('Failed to fetch data:', error)
+      console.error('Error fetching act details:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -307,11 +336,7 @@ const ActListTable = ({ productData }: { productData?: ProductType[] }) => {
                   text: 'Edit Act',
                   icon: 'tabler-edit',
                   menuItemProps: {
-                    onClick: () => {
-                      const selectedId = row.original.id
-                      setEditingRowId(selectedId) // Optional: for tracking the selected row
-                      fetchRowData(selectedId)
-                    }
+                    onClick: () => fetchRowData(row.original.id)
                   }
                 },
 
@@ -465,6 +490,11 @@ const ActListTable = ({ productData }: { productData?: ProductType[] }) => {
         />
       </Card>
       <AddEditAct open={openModal} setOpen={setOpenModal} />
+      <EditAct
+        open={!!editingRowId}
+        setOpen={(open: boolean) => setEditingRowId(open ? editingRowId : null)}
+        data={rowData}
+      />
     </>
   )
 }
