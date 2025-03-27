@@ -56,11 +56,10 @@ import { getLocalizedUrl } from '@/utils/i18n'
 
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
-// import AddEditAddress from '@/components/dialogs/add-act'
 import AddEditAct from '@/components/dialogs/add-act'
 
 // Components
-import InternationalActTable from './InternationalActTable' // Create this component for international acts
+import InternationalActTable from './InternationalActTable'
 
 declare module '@tanstack/table-core' {
   interface FilterFns {
@@ -73,6 +72,13 @@ declare module '@tanstack/table-core' {
 
 type ProductWithActionsType = ProductType & {
   actions?: string
+  type?: string
+  complianceCount?: number
+  name?: string
+  description?: string
+  country?: string
+  scope?: string
+  subject?: string
 }
 
 type ProductCategoryType = {
@@ -152,67 +158,134 @@ const columnHelper = createColumnHelper<ProductWithActionsType>()
 
 const ActListTable = ({ productData }: { productData?: ProductType[] }) => {
   // States
+  // console.log(productData)
   const [rowSelection, setRowSelection] = useState({})
   const [openModal, setOpenModal] = useState(false)
-  const [data, setData] = useState(...[productData])
+  const [data, setData] = useState(productData || [])
   const [filteredData, setFilteredData] = useState(data)
   const [globalFilter, setGlobalFilter] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [editingRowId, setEditingRowId] = useState(null)
+  const [rowData, setRowData] = useState(null)
 
   // Hooks
   const { lang: locale } = useParams()
 
+  const fetchRowData = async id => {
+    try {
+      const response = await fetch(`https://ai.lexcomply.co/v2/api/actMaster/getInternationalAct?id=${id}`)
+      const data = await response.json()
+      console.log(data)
+      setRowData(data) // This can then be passed to the dialog
+    } catch (error) {
+      console.error('Failed to fetch data:', error)
+    }
+  }
+
+  // Update data when productData changes
+  useEffect(() => {
+    if (productData) {
+      setData(productData)
+      setFilteredData(productData)
+    }
+  }, [productData])
+
+  // Handlers
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category)
+    const filtered = data.filter(item => item.type === category || category === '')
+    setFilteredData(filtered)
+  }
+
+  // Define columns before using them in the table instance
   const columns = useMemo<ColumnDef<ProductWithActionsType, any>[]>(
     () => [
-      columnHelper.accessor('productName', {
-        header: 'Id',
-        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
+      columnHelper.accessor('id', {
+        header: 'ID',
+        cell: ({ row }) => <Typography>{row.original.id}</Typography>
       }),
-      columnHelper.accessor('category', {
-        header: 'Compliance Count',
+      columnHelper.accessor('complianceCount', {
+        header: 'COMPLIANCE COUNT',
         cell: ({ row }) => (
           <div className='flex items-center gap-4'>
-            <Typography color='text.primary'>{row.original.category}</Typography>
+            <Typography color='text.primary'>{row.original.complianceCount || 0}</Typography>
           </div>
         )
       }),
-      columnHelper.accessor('sku', {
-        header: 'Type',
-        cell: ({ row }) => <Typography>{row.original.sku}</Typography>
+      columnHelper.accessor('type', {
+        header: 'TYPE',
+        cell: ({ row }) => <Typography>{row.original.type || 'General'}</Typography>
       }),
-      columnHelper.accessor('price', {
-        header: 'Act name',
-        cell: ({ row }) => <Typography>{row.original.price}</Typography>
-      }),
-      columnHelper.accessor('qty', {
-        header: 'Act description',
-        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
-      }),
-      columnHelper.accessor('qty', {
-        header: 'Country',
-        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
-      }),
-      columnHelper.accessor('qty', {
-        header: 'Scope',
-        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
-      }),
-      columnHelper.accessor('qty', {
-        header: 'Subject',
-        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
-      }),
-      columnHelper.accessor('status', {
-        header: 'Status',
+      columnHelper.accessor('name', {
+        header: 'ACT NAME',
         cell: ({ row }) => (
-          <Chip
-            label={productStatusObj[row.original.status].title}
-            variant='tonal'
-            color={productStatusObj[row.original.status].color}
-            size='small'
-          />
+          <Typography className='truncate max-w-[200px]' title={row.original.name}>
+            {row.original.name}
+          </Typography>
         )
       }),
+      columnHelper.accessor('description', {
+        header: 'ACT DESCRIPTION',
+        cell: ({ row }) => (
+          <Typography className='truncate max-w-[200px]' title={row.original.description}>
+            {row.original.description || 'No description'}
+          </Typography>
+        )
+      }),
+      columnHelper.accessor('country', {
+        header: 'COUNTRY',
+        cell: ({ row }) => <Typography>{row.original.country || 'Global'}</Typography>
+      }),
+      columnHelper.accessor('scope', {
+        header: 'SCOPE',
+        cell: ({ row }) => (
+          <Typography sx={{ textTransform: 'capitalize' }}>{row.original.scope || 'National'}</Typography>
+        )
+      }),
+      columnHelper.accessor('subject', {
+        header: 'SUBJECT',
+        cell: ({ row }) => <Typography>{row.original.subject || 'General'}</Typography>
+      }),
+      columnHelper.accessor('status', {
+        header: 'STATUS',
+        cell: ({ row }) => {
+          // Define the status styles object
+          const statusObj = {
+            Published: { title: 'Active', color: 'success' as ThemeColor },
+            Inactive: { title: 'Inactive', color: 'error' as ThemeColor },
+            Active: { title: 'Active', color: 'success' as ThemeColor },
+            Scheduled: { title: 'Active', color: 'success' as ThemeColor },
+            Draft: { title: 'Inactive', color: 'error' as ThemeColor }
+          }
+
+          const status = row.original.status
+
+          // Determine if the status string contains certain keywords to categorize as Active/Inactive
+          let mappedStatus: string
+
+          if (typeof status === 'string') {
+            if (['published', 'active', 'scheduled'].includes(status.toLowerCase())) {
+              mappedStatus = 'Active'
+            } else {
+              mappedStatus = 'Inactive'
+            }
+          } else {
+            // Default to showing the actual status text
+            mappedStatus = status || 'Inactive'
+          }
+
+          // Get the styling info for this status
+          const statusInfo = statusObj[mappedStatus] ||
+            statusObj[status as keyof typeof statusObj] || {
+              title: mappedStatus,
+              color: mappedStatus === 'Active' ? 'success' : ('error' as ThemeColor)
+            }
+
+          return <Chip label={statusInfo.title} variant='tonal' color={statusInfo.color} size='small' />
+        }
+      }),
       columnHelper.accessor('actions', {
-        header: 'Actions',
+        header: 'ACTIONS',
         cell: ({ row }) => (
           <div className='flex items-center'>
             <IconButton>
@@ -226,6 +299,23 @@ const ActListTable = ({ productData }: { productData?: ProductType[] }) => {
               iconClassName='text-textSecondary'
               options={[
                 {
+                  text: 'View Details',
+                  icon: 'tabler-eye',
+                  menuItemProps: { onClick: () => console.log('View details', row.original.id) }
+                },
+                {
+                  text: 'Edit Act',
+                  icon: 'tabler-edit',
+                  menuItemProps: {
+                    onClick: () => {
+                      const selectedId = row.original.id
+                      setEditingRowId(selectedId) // Optional: for tracking the selected row
+                      fetchRowData(selectedId)
+                    }
+                  }
+                },
+
+                {
                   text: 'Delete',
                   icon: 'tabler-trash',
                   menuItemProps: { onClick: () => setData(data?.filter(product => product.id !== row.original.id)) }
@@ -237,50 +327,34 @@ const ActListTable = ({ productData }: { productData?: ProductType[] }) => {
         enableSorting: false
       })
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, filteredData]
+    [data]
   )
 
+  // Create table instance AFTER columns definition
   const table = useReactTable({
-    data: filteredData as ProductType[],
+    data: filteredData,
     columns,
-    filterFns: {
-      fuzzy: fuzzyFilter
-    },
     state: {
-      rowSelection,
-      globalFilter
+      globalFilter,
+      rowSelection
     },
-    initialState: {
-      pagination: {
-        pageSize: 10
-      }
-    },
-    enableRowSelection: true,
-    globalFilterFn: fuzzyFilter,
+    onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
-    onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-    getFacetedMinMaxValues: getFacetedMinMaxValues()
+    getSortedRowModel: getSortedRowModel(),
+    filterFns: {
+      fuzzy: fuzzyFilter
+    }
   })
 
-  // Handle category change
-  const handleCategoryChange = (category: string) => {
-    setSelectedCategory(category)
-  }
-
-  // Decide which table to render based on selected category
+  // Render the table content based on selected category
   const renderTableContent = () => {
     if (selectedCategory === 'Accessories') {
-      // Show International Act Table
-      return <InternationalActTable data={filteredData ?? []} />
+      // Show International Act Table (you'll need to implement this component)
+      return <InternationalActTable data={filteredData} />
     } else {
-      // Show Regular Table
       return (
         <div className='overflow-x-auto'>
           <table className={tableStyles.table}>
@@ -344,20 +418,16 @@ const ActListTable = ({ productData }: { productData?: ProductType[] }) => {
   return (
     <>
       <Card>
-        <CardHeader title='Filters' />
-        <TableFilters
-          setData={setFilteredData}
-          productData={data}
-          onCategoryChange={handleCategoryChange} // Pass the new callback
-        />
+        <CardHeader title='Acts Master' />
+        <TableFilters setData={setFilteredData} productData={data} onCategoryChange={handleCategoryChange} />
         <Divider />
         <div className='flex flex-wrap justify-between gap-4 p-6'>
-          {/* <DebouncedInput
+          <DebouncedInput
             value={globalFilter ?? ''}
             onChange={value => setGlobalFilter(String(value))}
-            placeholder='Search Product'
+            placeholder='Search Acts'
             className='max-sm:is-full'
-          /> */}
+          />
           <div className='flex flex-wrap items-center max-sm:flex-col gap-4 max-sm:is-full is-auto'>
             <CustomTextField
               select
@@ -376,12 +446,12 @@ const ActListTable = ({ productData }: { productData?: ProductType[] }) => {
               onClick={() => setOpenModal(true)}
               startIcon={<i className='tabler-plus' />}
             >
-              Add act
+              Add Act
             </Button>
           </div>
         </div>
 
-        {/* Render different tables based on category selection */}
+        {/* Render table content */}
         {renderTableContent()}
 
         <TablePagination

@@ -59,7 +59,7 @@ const productStatusObj: productStatusType = {
 // Column Definitions
 const columnHelper = createColumnHelper<ProductWithActionsType>()
 
-const CompanyMasterTable = ({ productData }: { productData?: ProductType[] }) => {
+const DocumentMasterTable = ({ productData }: { productData?: ProductType[] }) => {
   // States
   const [rowSelection, setRowSelection] = useState({})
   const [openModal, setOpenModal] = useState(false)
@@ -257,4 +257,4 @@ const CompanyMasterTable = ({ productData }: { productData?: ProductType[] }) =>
   )
 }
 
-export default CompanyMasterTable
+export default DocumentMasterTable
