@@ -210,7 +210,39 @@ const ActListTable = ({ productData }: { productData?: ProductType[] }) => {
       setIsLoading(false)
     }
   }
+  const handleDeleteAct = async (id: string | number) => {
+    // Confirm before deletion
+    if (window.confirm('Are you sure you want to delete this act?')) {
+      try {
+        console.log(`Deleting act with ID: ${id}`)
 
+        // Make the API call to delete the act
+        const response = await axiosInstance.delete('https://ai.lexcomply.co/v2/api/actMaster/removeActMaster', {
+          data: { id },
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+
+        console.log('Delete API response:', response.data)
+
+        // If deletion was successful, update the UI
+        if (response.data) {
+          // Remove the deleted item from the data
+          setData(data?.filter(product => product.id !== id))
+          setFilteredData(filteredData?.filter(product => product.id !== id))
+
+          // Show success message
+          alert('Act deleted successfully')
+        } else {
+          alert('Failed to delete act')
+        }
+      } catch (error) {
+        console.error('Error deleting act:', error)
+        alert('Error deleting act. Please try again.')
+      }
+    }
+  }
   // Update data when productData changes
   useEffect(() => {
     if (productData) {
@@ -340,10 +372,13 @@ const ActListTable = ({ productData }: { productData?: ProductType[] }) => {
                   }
                 },
 
+                // Replace the existing Delete option with this:
                 {
                   text: 'Delete',
                   icon: 'tabler-trash',
-                  menuItemProps: { onClick: () => setData(data?.filter(product => product.id !== row.original.id)) }
+                  menuItemProps: {
+                    onClick: () => handleDeleteAct(row.original.id)
+                  }
                 }
               ]}
             />

@@ -1,8 +1,7 @@
 'use client'
 
 // React Imports
-import { useEffect, useState } from 'react'
-import type { ChangeEvent } from 'react'
+import { useEffect, useState, ChangeEvent } from 'react'
 
 // MUI Imports
 import Dialog from '@mui/material/Dialog'
@@ -45,6 +44,7 @@ interface InternationalActResponse {
 }
 
 type EditActData = {
+  id?: string
   name?: string
   firstName?: string
   lastName?: string
@@ -56,10 +56,10 @@ type EditActData = {
   city?: string
   state?: string
   zipCode?: string
-  description?: string
+  act_desc?: string
   url?: string
   category?: string
-  type?: string
+  industry_type?: string
   continent?: string
   region?: string
   subject1?: string
@@ -86,10 +86,10 @@ const initialActData: EditActData = {
   city: '',
   state: '',
   zipCode: '',
-  description: '',
+  act_desc: '',
   url: '',
   category: '',
-  type: '',
+  industry_type: '',
   continent: '',
   region: '',
   subject1: ''
@@ -144,9 +144,10 @@ const EditAct = ({ open, setOpen, data, isLoading = false }: EditActProps) => {
       const apiData = data as InternationalActResponse
 
       setActData({
+        id: apiData.actId.toString(),
         name: apiData.actName || '',
         actName: apiData.actName || '',
-        description: apiData.actDescription || '',
+        act_desc: apiData.actDescription || '',
         country: apiData.country || '',
         state: apiData.state || '',
         city: apiData.city || '',
@@ -154,7 +155,7 @@ const EditAct = ({ open, setOpen, data, isLoading = false }: EditActProps) => {
         continent: apiData.continent?.toLowerCase() || '',
         region: apiData.region || '',
         // Default values for fields not in API response
-        type: apiData.category === 'State' ? 'state' : 'central',
+        industry_type: apiData.category === 'State' ? 'state' : 'central',
         url: '',
         subject1: ''
       })
@@ -218,6 +219,9 @@ const EditAct = ({ open, setOpen, data, isLoading = false }: EditActProps) => {
             <i className='tabler-x' />
           </DialogCloseButton>
 
+          {/* Hidden field for ID */}
+          <input type='hidden' name='id' value={actData?.id || '0'} />
+
           {isLoading ? (
             <div className='flex justify-center py-8'>
               <CircularProgress />
@@ -236,7 +240,7 @@ const EditAct = ({ open, setOpen, data, isLoading = false }: EditActProps) => {
                   disabled={isLoading}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              {/* <Grid item xs={12} sm={6}>
                 <CustomTextField
                   fullWidth
                   label='Act Name'
@@ -246,7 +250,7 @@ const EditAct = ({ open, setOpen, data, isLoading = false }: EditActProps) => {
                   onChange={e => handleFieldChange('actName', e.target.value)}
                   disabled={isLoading}
                 />
-              </Grid>
+              </Grid> */}
               <Grid item xs={12}>
                 <CustomTextField
                   fullWidth
@@ -254,15 +258,15 @@ const EditAct = ({ open, setOpen, data, isLoading = false }: EditActProps) => {
                   required
                   rows={2}
                   label='Description'
-                  name='description'
+                  name='act_desc'
                   placeholder='Act Description'
                   inputProps={{ maxLength: 220 }}
-                  value={actData?.description || ''}
-                  onChange={e => handleFieldChange('description', e.target.value)}
+                  value={actData?.act_desc || ''}
+                  onChange={e => handleFieldChange('act_desc', e.target.value)}
                   disabled={isLoading}
                 />
                 <Typography variant='caption' className='text-right block'>
-                  {220 - (actData?.description?.length || 0)} chars left
+                  {220 - (actData?.act_desc?.length || 0)} chars left
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -328,10 +332,10 @@ const EditAct = ({ open, setOpen, data, isLoading = false }: EditActProps) => {
                   select
                   fullWidth
                   label='Type'
-                  name='type'
+                  name='industry_type'
                   required
-                  value={actData?.type || ''}
-                  onChange={e => handleFieldChange('type', e.target.value)}
+                  value={actData?.industry_type || ''}
+                  onChange={e => handleFieldChange('industry_type', e.target.value)}
                   disabled={isLoading}
                 >
                   <MenuItem value='central'>Central</MenuItem>

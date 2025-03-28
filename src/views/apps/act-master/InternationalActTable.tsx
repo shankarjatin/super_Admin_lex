@@ -40,11 +40,18 @@ import TablePaginationComponent from '../../../components/TablePaginationCompone
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
 
-type ProductWithActionsType = ProductType & {
-  actions?: string
-  region?: string
-  compliance?: number
-  country?: string
+type InternationalActDataType = {
+  id: string
+  act_id: string
+  category: string
+  continent: string
+  country: string
+  state: string
+  city: string
+  region: string
+  isDeleted: string
+  description: string
+  name: string
 }
 
 type InternationalStatusType = {
@@ -61,53 +68,68 @@ const internationalStatusObj: InternationalStatusType = {
 }
 
 // Column Definitions
-const columnHelper = createColumnHelper<ProductWithActionsType>()
+const columnHelper = createColumnHelper<InternationalActDataType>()
 
-const InternationalActTable = ({ data }: { data: ProductType[] }) => {
+const InternationalActTable = ({ data }: { data: InternationalActDataType[] }) => {
   // States
+  console.log(data)
   const [rowSelection, setRowSelection] = useState({})
   const [pageSize, setPageSize] = useState(10)
   const [pageIndex, setPageIndex] = useState(0)
-  const [filteredData, setFilteredData] = useState<ProductType[]>(data)
+  const [filteredData, setFilteredData] = useState<InternationalActDataType[]>(data || [])
 
   // Update filtered data when props data changes
   useEffect(() => {
-    setFilteredData(data)
+    if (data && Array.isArray(data)) {
+      setFilteredData(data)
+    }
   }, [data])
 
-  const columns = useMemo<ColumnDef<ProductWithActionsType, any>[]>(
+  const columns = useMemo<ColumnDef<InternationalActDataType, any>[]>(
     () => [
+      columnHelper.accessor('id', {
+        header: 'Sr. No.',
+        cell: ({ row }) => <Typography>{row.index + 1}</Typography> // For Sr. No.
+      }),
       columnHelper.accessor('id', {
         header: 'International ID',
         cell: ({ row }) => <Typography>{row.original.id}</Typography>
       }),
-      columnHelper.accessor('productName', {
+      columnHelper.accessor('name', {
         header: 'Act Name',
-        cell: ({ row }) => <Typography className='font-medium'>{row.original.productName}</Typography>
+        cell: ({ row }) => <Typography className='font-medium'>{row.original.name}</Typography>
+      }),
+      columnHelper.accessor('description', {
+        header: 'Act Name',
+        cell: ({ row }) => <Typography className='font-medium'>{row.original.description}</Typography>
       }),
       columnHelper.accessor('category', {
-        header: 'Country',
+        header: 'Category',
         cell: ({ row }) => <Typography>{row.original.category}</Typography>
       }),
-      columnHelper.accessor('region', {
-        header: 'Region',
-        cell: ({ row }) => <Typography>{row.original.region || 'Global'}</Typography>
+      columnHelper.accessor('country', {
+        header: 'Country',
+        cell: ({ row }) => <Typography>{row.original.country}</Typography>
       }),
-      columnHelper.accessor('price', {
-        header: 'Compliance Score',
-        cell: ({ row }) => <Typography>{row.original.price}%</Typography>
+      columnHelper.accessor('continent', {
+        header: 'Continent',
+        cell: ({ row }) => <Typography>{row.original.continent}</Typography>
       }),
-      columnHelper.accessor('status', {
-        header: 'Status',
-        cell: ({ row }) => (
-          <Chip
-            label={row.original.status}
-            variant='tonal'
-            color={internationalStatusObj[row.original.status]?.color || 'default'}
-            size='small'
-          />
-        )
+      columnHelper.accessor('state', {
+        header: 'State',
+        cell: ({ row }) => <Typography>{row.original.state}</Typography>
       }),
+      // columnHelper.accessor('status', {
+      //   header: 'Status',
+      //   cell: ({ row }) => (
+      //     <Chip
+      //       label={row.original.status || 'N/A'}
+      //       variant='tonal'
+      //       color={internationalStatusObj[row.original.status]?.color || 'default'}
+      //       size='small'
+      //     />
+      //   )
+      // }),
       columnHelper.accessor('actions', {
         header: 'Actions',
         cell: ({ row }) => (
@@ -201,19 +223,18 @@ const InternationalActTable = ({ data }: { data: ProductType[] }) => {
             {table
               .getRowModel()
               .rows.slice(0, table.getState().pagination.pageSize)
-              .map(row => {
-                return (
-                  <tr key={row.id} className={classnames({ selected: row.getIsSelected() })}>
-                    {row.getVisibleCells().map(cell => (
-                      <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
-                    ))}
-                  </tr>
-                )
-              })}
+              .map(row => (
+                <tr key={row.id} className={classnames({ selected: row.getIsSelected() })}>
+                  {row.getVisibleCells().map(cell => (
+                    <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                  ))}
+                </tr>
+              ))}
           </tbody>
         )}
       </table>
 
+      {/* Pagination (Optional if you want to enable pagination) */}
       {/* <TablePagination
         component={() => <TablePaginationComponent table={table} />}
         count={table.getFilteredRowModel().rows.length}
