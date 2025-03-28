@@ -8,7 +8,7 @@ import PerfectScrollbar from 'react-perfect-scrollbar'
 import type { VerticalMenuContextProps } from '@menu/components/vertical-menu/Menu'
 
 // Component Imports
-import { Menu, MenuItem } from '@menu/vertical-menu'
+import { Menu, MenuItem, SubMenu } from '@menu/vertical-menu'
 
 // Hook Imports
 import useVerticalNav from '@menu/hooks/useVerticalNav'
@@ -68,23 +68,42 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
         renderExpandedMenuItemIcon={{ icon: <i className='tabler-circle text-xs' /> }}
         menuSectionStyles={menuSectionStyles(verticalNavOptions, theme)}
       >
+        {' '}
         <MenuItem href='/dashboard' icon={<i className='tabler-smart-home' />}>
           DASHBOARD
         </MenuItem>
-        <MenuItem href='/act-master' icon={<i className='tabler-info-circle' />}>
-          ACT MASTER
-        </MenuItem>
+      </Menu>
+      <Menu
+        popoutMenuOffset={{ mainAxis: 23 }}
+        menuItemStyles={menuItemStyles(verticalNavOptions, theme)}
+        renderExpandIcon={({ open }) => <RenderExpandIcon open={open} transitionDuration={transitionDuration} />}
+        renderExpandedMenuItemIcon={{ icon: <i className='tabler-circle text-xs' /> }}
+        menuSectionStyles={menuSectionStyles(verticalNavOptions, theme)}
+      >
+        <SubMenu label='ACT MASTER' icon={<i className='tabler-info-circle' />}>
+          <MenuItem href='/act-master'>ALL</MenuItem>
+          <MenuItem href='/act-master-international'>INTERNATIONAL</MenuItem>
+        </SubMenu>
+      </Menu>
+      <Menu
+        popoutMenuOffset={{ mainAxis: 23 }}
+        menuItemStyles={menuItemStyles(verticalNavOptions, theme)}
+        renderExpandIcon={({ open }) => <RenderExpandIcon open={open} transitionDuration={transitionDuration} />}
+        renderExpandedMenuItemIcon={{ icon: <i className='tabler-circle text-xs' /> }}
+        menuSectionStyles={menuSectionStyles(verticalNavOptions, theme)}
+      >
+        {' '}
         <MenuItem href='/company-master' icon={<i className='tabler-info-circle' />}>
           COMPANY MASTER
         </MenuItem>
         <MenuItem href='/document-master' icon={<i className='tabler-info-circle' />}>
           DOCUMENT MASTER
         </MenuItem>
-        <MenuItem href='/add-act-type' icon={<i className='tabler-info-circle' />}>
-          ADD ACT TYPE
+        <MenuItem href='/form-master' icon={<i className='tabler-info-circle' />}>
+          FORM MASTER
         </MenuItem>
-        <MenuItem href='/no-mail' icon={<i className='tabler-info-circle' />}>
-          NO MAIL
+        <MenuItem href='/states-master' icon={<i className='tabler-info-circle' />}>
+          STATES MASTER
         </MenuItem>
         <MenuItem href='/due-date-pattern' icon={<i className='tabler-info-circle' />}>
           DUE DATE PATTERN

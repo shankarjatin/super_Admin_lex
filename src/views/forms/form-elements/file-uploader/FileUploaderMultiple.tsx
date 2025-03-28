@@ -1,5 +1,5 @@
 // React Imports
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 // MUI Imports
 import List from '@mui/material/List'
@@ -18,15 +18,37 @@ type FileProp = {
   size: number
 }
 
-const FileUploaderMultiple = () => {
+interface FileUploaderMultipleProps {
+  setFiles: (files: File[]) => void
+  name?: string
+  accept?: Record<string, string[]>
+  maxSize?: number
+  maxFiles?: number
+}
+
+const FileUploaderMultiple = (props: FileUploaderMultipleProps) => {
+  // Props destructuring with defaults
+  const {
+    setFiles: setFilesCallback,
+    name = 'dropzone',
+    accept = undefined,
+    maxSize = 5000000, // 5MB default
+    maxFiles = 10
+  } = props
+
   // States
   const [files, setFiles] = useState<File[]>([])
 
   // Hooks
   const { getRootProps, getInputProps } = useDropzone({
     onDrop: (acceptedFiles: File[]) => {
-      setFiles(acceptedFiles.map((file: File) => Object.assign(file)))
-    }
+      const newFiles = acceptedFiles.map((file: File) => Object.assign(file))
+      setFiles(newFiles)
+      setFilesCallback(newFiles)
+    },
+    accept,
+    maxSize,
+    maxFiles
   })
 
   const renderFilePreview = (file: FileProp) => {
@@ -42,6 +64,7 @@ const FileUploaderMultiple = () => {
     const filtered = uploadedFiles.filter((i: FileProp) => i.name !== file.name)
 
     setFiles([...filtered])
+    setFilesCallback([...filtered])
   }
 
   const fileList = files.map((file: FileProp) => (
@@ -65,12 +88,13 @@ const FileUploaderMultiple = () => {
 
   const handleRemoveAllFiles = () => {
     setFiles([])
+    setFilesCallback([])
   }
 
   return (
     <>
       <div {...getRootProps({ className: 'dropzone' })}>
-        <input {...getInputProps()} />
+        <input {...getInputProps()} name={name} />
         <div className='flex items-center flex-col'>
           <Avatar variant='rounded' className='bs-12 is-12 mbe-9'>
             <i className='tabler-upload' />

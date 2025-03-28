@@ -13,6 +13,7 @@ import MenuItem from '@mui/material/MenuItem'
 import TablePagination from '@mui/material/TablePagination'
 import Typography from '@mui/material/Typography'
 import CustomTextField from '@core/components/mui/TextField'
+import Link from '@mui/material/Link'
 
 // Third-party Imports
 import classnames from 'classnames'
@@ -37,107 +38,200 @@ import TablePaginationComponent from '../../../components/TablePaginationCompone
 
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
-import AddAdmin from '@/components/dialogs/add-admin'
+import axios from 'axios'
+import https from 'https'
 
-type ProductWithActionsType = ProductType & {
+// Create a custom axios instance that bypasses SSL verification
+const axiosInstance = axios.create({
+  httpsAgent: new https.Agent({
+    rejectUnauthorized: false
+  })
+})
+
+type DocumentType = {
+  id: string
+  name?: string
+  documentName?: string
+  documentTitle?: string
+  status?: string
+  documentUrl?: string
+  dateTime?: string
+  act_id?: number
+  compliance_id?: number
+  productName?: string
+  description?: string
+  country?: string
+  state?: string
+  city?: string
+  category?: string
+  continent?: string
+  region?: string
+  type?: string
+  subject?: string
+  scope?: string
+  price?: number
+  complianceCount?: number
+  sku?: string
+  stock?: boolean
+  qty?: number
+}
+
+type DocumentWithActionsType = DocumentType & {
   actions?: string
 }
 
-type productStatusType = {
+type documentStatusType = {
   [key: string]: {
     title: string
     color: ThemeColor
   }
 }
 
-const productStatusObj: productStatusType = {
-  Scheduled: { title: 'Scheduled', color: 'warning' },
-  Published: { title: 'Publish', color: 'success' },
+const documentStatusObj: documentStatusType = {
+  Active: { title: 'Active', color: 'success' },
   Inactive: { title: 'Inactive', color: 'error' }
 }
 
 // Column Definitions
-const columnHelper = createColumnHelper<ProductWithActionsType>()
+const columnHelper = createColumnHelper<DocumentWithActionsType>()
 
-const DocumentMasterTable = ({ productData }: { productData?: ProductType[] }) => {
+const DocumentMasterTable = ({ productData }: { productData?: DocumentType[] }) => {
   // States
   const [rowSelection, setRowSelection] = useState({})
   const [openModal, setOpenModal] = useState(false)
   const [data, setData] = useState(productData || [])
 
-  const columns = useMemo<ColumnDef<ProductWithActionsType, any>[]>(
+  const handleDeleteDocument = async (id: string) => {
+    // Confirm before deletion
+    if (window.confirm('Are you sure you want to delete this document?')) {
+      try {
+        console.log(`Deleting document with ID: ${id}`)
+
+        // Make the API call to delete the document
+        const response = await axiosInstance.post(
+          'https://ai.lexcomply.co/v2/api/documentMaster/removeDocument',
+          { id },
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+
+        console.log('Delete API response:', response.data)
+
+        // If deletion was successful, update the UI
+        if (response.data) {
+          // Remove the deleted item from the data
+          setData(data?.filter(doc => doc.id !== id))
+
+          // Show success message
+          alert('Document deleted successfully')
+        } else {
+          alert('Failed to delete document')
+        }
+      } catch (error) {
+        console.error('Error deleting document:', error)
+        alert('Error deleting document. Please try again.')
+      }
+    }
+  }
+
+  const columns = useMemo<ColumnDef<DocumentWithActionsType, any>[]>(
     () => [
-      columnHelper.accessor('productName', {
-        header: 'Id',
-        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
+      // Serial Number Column
+      columnHelper.accessor('id', {
+        header: 'SNO',
+        cell: ({ row }) => <Typography>{parseInt(row.index) + 1}</Typography>
       }),
-      columnHelper.accessor('category', {
-        header: 'Compliance Count',
+      // Document Name Column
+      columnHelper.accessor('documentName', {
+        header: 'Document',
         cell: ({ row }) => (
-          <div className='flex items-center gap-4'>
-            <Typography color='text.primary'>{row.original.category}</Typography>
+          <div className='flex flex-col'>
+            <Typography color='text.primary' fontWeight={500}>
+              {row.original.documentName || row.original.name || row.original.productName || 'Untitled'}
+            </Typography>
+            <Typography variant='body2' color='text.secondary'>
+              {row.original.documentTitle || row.original.description || ''}
+            </Typography>
           </div>
         )
       }),
-      columnHelper.accessor('sku', {
-        header: 'Type',
-        cell: ({ row }) => <Typography>{row.original.sku}</Typography>
+      // View Document Column
+      columnHelper.accessor('documentUrl', {
+        header: 'View',
+        cell: ({ row }) => {
+          const url = row.original.documentUrl
+          const baseUrl = 'https://ai.lexcomply.co/v2/api/'
+          const fullUrl = url ? baseUrl + url : '#'
+
+          return (
+            <Link
+              href={fullUrl}
+              target='_blank'
+              rel='noopener'
+              underline='hover'
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                color: url ? 'primary.main' : 'text.disabled'
+              }}
+            >
+              <i className='tabler-file-text me-2' />
+              View Document
+            </Link>
+          )
+        }
       }),
-      columnHelper.accessor('price', {
-        header: 'Act name',
-        cell: ({ row }) => <Typography>{row.original.price}</Typography>
+      // Date Column
+      columnHelper.accessor('dateTime', {
+        header: 'Date',
+        cell: ({ row }) => {
+          const dateTime = row.original.dateTime
+          let formattedDate = dateTime
+
+          // Format date if it's valid
+          if (dateTime && dateTime !== 'Not available') {
+            try {
+              const date = new Date(dateTime)
+              if (!isNaN(date.getTime())) {
+                formattedDate = date.toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })
+              }
+            } catch (e) {
+              console.error('Invalid date format:', dateTime)
+            }
+          }
+
+          return <Typography>{formattedDate || 'N/A'}</Typography>
+        }
       }),
-      columnHelper.accessor('qty', {
-        header: 'Act description',
-        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
-      }),
-      columnHelper.accessor('qty', {
-        header: 'Country',
-        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
-      }),
-      columnHelper.accessor('qty', {
-        header: 'Scope',
-        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
-      }),
-      columnHelper.accessor('qty', {
-        header: 'Subject',
-        cell: ({ row }) => <Typography>{row.original.qty}</Typography>
-      }),
-      columnHelper.accessor('status', {
-        header: 'Status',
+      // Edit Column
+      columnHelper.accessor('edit', {
+        header: 'Edit',
         cell: ({ row }) => (
-          <Chip
-            label={productStatusObj[row.original.status].title}
-            variant='tonal'
-            color={productStatusObj[row.original.status].color}
-            size='small'
-          />
+          <IconButton
+            onClick={() => {
+              console.log('Edit document:', row.original)
+              // Implement edit functionality here
+            }}
+          >
+            <i className='tabler-edit text-textSecondary' />
+          </IconButton>
         )
       }),
-      columnHelper.accessor('actions', {
-        header: 'Actions',
+      // Delete Column
+      columnHelper.accessor('delete', {
+        header: 'Delete',
         cell: ({ row }) => (
-          <div className='flex items-center'>
-            <IconButton>
-              <i className='tabler-edit text-textSecondary' />
-            </IconButton>
-            <IconButton>
-              <i className='tabler-trash text-textSecondary' />
-            </IconButton>
-            <OptionMenu
-              iconButtonProps={{ size: 'medium' }}
-              iconClassName='text-textSecondary'
-              options={[
-                {
-                  text: 'Delete',
-                  icon: 'tabler-trash',
-                  menuItemProps: { onClick: () => setData(data.filter(product => product.id !== row.original.id)) }
-                }
-              ]}
-            />
-          </div>
-        ),
-        enableSorting: false
+          <IconButton onClick={() => handleDeleteDocument(row.original.id)} color='error'>
+            <i className='tabler-trash text-textSecondary' />
+          </IconButton>
+        )
       })
     ],
     [data]
@@ -165,15 +259,9 @@ const DocumentMasterTable = ({ productData }: { productData?: ProductType[] }) =
   return (
     <>
       <Card>
-        <CardHeader
-          title='Company Master'
-          action={
-            <Button variant='contained' onClick={() => setOpenModal(true)} startIcon={<i className='tabler-plus' />}>
-              Add Admin
-            </Button>
-          }
-        />
-        <div className='flex justify-end p-6'>
+        <CardHeader title='Document List' sx={{ '& .MuiCardHeader-action': { m: 0 } }} />
+        <div className='flex justify-between items-center p-6'>
+          <Typography variant='h6'>{data.length} Documents</Typography>
           <CustomTextField
             select
             value={table.getState().pagination.pageSize}
@@ -219,7 +307,7 @@ const DocumentMasterTable = ({ productData }: { productData?: ProductType[] }) =
               <tbody>
                 <tr>
                   <td colSpan={table.getVisibleFlatColumns().length} className='text-center'>
-                    No data available
+                    No documents available
                   </td>
                 </tr>
               </tbody>
@@ -252,7 +340,6 @@ const DocumentMasterTable = ({ productData }: { productData?: ProductType[] }) =
           }}
         />
       </Card>
-      <AddAdmin open={openModal} setOpen={setOpenModal} />
     </>
   )
 }
