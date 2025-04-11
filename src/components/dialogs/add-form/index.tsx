@@ -45,33 +45,35 @@ interface ActOption {
   name: string
 }
 
-type DocumentData = {
+type FormData = {
   id?: string
-  documentName: string
+  formName: string
+  formDescription: string
   act_id: number | null
   status: boolean
   date: string | null
   file: File | null
 }
 
-type AddDocumentProps = {
+type AddFormProps = {
   open: boolean
   setOpen: (open: boolean) => void
-  data?: DocumentData
+  data?: FormData
   selectedActId?: number | null
 }
 
-const initialDocumentData: DocumentData = {
-  documentName: '',
+const initialFormData: FormData = {
+  formName: '',
+  formDescription: '',
   act_id: null,
   status: true,
   date: null,
   file: null
 }
 
-const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) => {
+const AddForm = ({ open, setOpen, data, selectedActId }: AddFormProps) => {
   // States
-  const [documentData, setDocumentData] = useState<DocumentData>(initialDocumentData)
+  const [formData, setFormData] = useState<FormData>(initialFormData)
   const [file, setFile] = useState<File | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
@@ -112,7 +114,7 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
       const act = actOptions.find(a => a.id === selectedActId)
       if (act) {
         setSelectedAct(act)
-        setDocumentData(prev => ({ ...prev, act_id: act.id }))
+        setFormData(prev => ({ ...prev, act_id: act.id }))
       }
     }
   }, [selectedActId, actOptions])
@@ -121,18 +123,18 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
   useEffect(() => {
     if (open) {
       if (data) {
-        setDocumentData(data)
+        setFormData(data)
         if (data.act_id && actOptions.length > 0) {
           const act = actOptions.find(a => a.id === data.act_id)
           setSelectedAct(act || null)
         }
       } else {
-        setDocumentData(initialDocumentData)
+        setFormData(initialFormData)
         if (selectedActId && actOptions.length > 0) {
           const act = actOptions.find(a => a.id === selectedActId)
           if (act) {
             setSelectedAct(act)
-            setDocumentData(prev => ({ ...prev, act_id: act.id }))
+            setFormData(prev => ({ ...prev, act_id: act.id }))
           } else {
             setSelectedAct(null)
           }
@@ -146,6 +148,7 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
   }, [open, data, selectedActId, actOptions])
 
   // Handle file change
+  // Handle file change
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] || null
     setFile(selectedFile)
@@ -158,32 +161,26 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
         return
       }
 
-      // Validate file type (PDF, DOCX, DOC, XLS, XLSX, etc.)
-      const allowedTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      ]
+      // Validate file type (only images)
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
 
       if (!allowedTypes.includes(selectedFile.type)) {
-        setFileError('Only PDF, Word, and Excel files are allowed')
+        setFileError('Only image files are allowed (JPEG, PNG, GIF, WebP, SVG)')
         return
       }
 
-      // Set file in document data
-      setDocumentData({
-        ...documentData,
+      // Set file in form data
+      setFormData({
+        ...formData,
         file: selectedFile
       })
     }
   }
 
   // Handle form field changes
-  const handleChange = (field: keyof DocumentData, value: any) => {
-    setDocumentData({
-      ...documentData,
+  const handleChange = (field: keyof FormData, value: any) => {
+    setFormData({
+      ...formData,
       [field]: value
     })
   }
@@ -191,8 +188,8 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
   // Handle act selection
   const handleActChange = (event: any, newValue: ActOption | null) => {
     setSelectedAct(newValue)
-    setDocumentData({
-      ...documentData,
+    setFormData({
+      ...formData,
       act_id: newValue?.id || null
     })
   }
@@ -201,16 +198,16 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
   const handleSubmit = async () => {
     try {
       // Validate form
-      if (!documentData.documentName) {
+      if (!formData.formName) {
         setSnackbar({
           open: true,
-          message: 'Please enter document name',
+          message: 'Please enter form name',
           severity: 'error'
         })
         return
       }
 
-      if (!documentData.act_id) {
+      if (!formData.act_id) {
         setSnackbar({
           open: true,
           message: 'Please select an act',
@@ -219,10 +216,10 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
         return
       }
 
-      if (!file && !documentData.file) {
+      if (!file && !formData.file) {
         setSnackbar({
           open: true,
-          message: 'Please upload a document file',
+          message: 'Please upload a form file',
           severity: 'error'
         })
         return
@@ -247,8 +244,6 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
             }
           )
 
-          console.log('File upload response:', uploadResponse.data)
-
           if (uploadResponse.data) {
             // Get 'name' from the response
             fileName = uploadResponse.data.name || 'default_name'
@@ -261,20 +256,20 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
         }
       }
 
-      // Prepare document data for submission
+      // Prepare form data for submission
       const submitData = {
         edit: '0',
-        docname: documentData.documentName,
-        act_id: documentData.act_id,
-        status: documentData.status ? 1 : 0,
-        e_date: documentData.date || new Date().toISOString().split('T')[0],
-        doc_title: fileName, // Send only the name here
-        doc_url: 'documents/' + fileName // Add the URL path combined with filename
+        form_name: formData.formName,
+        form_discription: formData.formDescription,
+        actId: formData.act_id,
+        status: formData.status ? 1 : 0,
+        e_date: formData.date || new Date().toISOString().split('T')[0],
+        form_dos: fileName // Send only the name here
       }
 
-      // Submit document data
+      // Submit form data
       const response = await axiosInstance.post(
-        'https://ai.lexcomply.co/v2/api/documentMaster/createDocument',
+        'https://ai.lexcomply.co/v2/api/formMaster/createFormMaster',
         submitData,
         {
           headers: {
@@ -283,12 +278,10 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
         }
       )
 
-      console.log('Document submission response:', response.data)
-
       if (response.data && response.data.success) {
         setSnackbar({
           open: true,
-          message: 'Document uploaded successfully',
+          message: 'Form uploaded successfully',
           severity: 'success'
         })
 
@@ -297,13 +290,13 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
           setOpen(false)
         }, 1500)
       } else {
-        throw new Error('Document submission failed')
+        throw new Error('Form submission failed')
       }
     } catch (error) {
-      console.error('Error submitting document:', error)
+      console.error('Error submitting form:', error)
       setSnackbar({
         open: true,
-        message: `Failed to upload document: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message: `Failed to upload form: ${error instanceof Error ? error.message : 'Unknown error'}`,
         severity: 'error'
       })
     } finally {
@@ -321,9 +314,9 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
         sx={{ '& .MuiDialog-paper': { overflow: 'visible' } }}
       >
         <DialogTitle variant='h4' className='flex gap-2 flex-col text-center sm:pbs-12 sm:pbe-6 sm:pli-12'>
-          {data ? 'Edit Document' : 'Add New Document'}
+          {data ? 'Edit Form' : 'Add New Form'}
           <Typography component='span' className='flex flex-col text-center'>
-            {data ? 'Update document information' : 'Upload new document to the system'}
+            {data ? 'Update form information' : 'Upload new form to the system'}
           </Typography>
         </DialogTitle>
         <form onSubmit={e => e.preventDefault()}>
@@ -342,12 +335,25 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
               <Grid item xs={12}>
                 <CustomTextField
                   fullWidth
-                  label='Document Name'
-                  name='documentName'
+                  label='Form Name'
+                  name='formName'
                   required
-                  placeholder='Enter Document Name'
-                  value={documentData.documentName}
-                  onChange={e => handleChange('documentName', e.target.value)}
+                  placeholder='Enter Form Name'
+                  value={formData.formName}
+                  onChange={e => handleChange('formName', e.target.value)}
+                  disabled={loading}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <CustomTextField
+                  fullWidth
+                  label='Form Description'
+                  name='formDescription'
+                  required
+                  placeholder='Enter Form Description'
+                  value={formData.formDescription}
+                  onChange={e => handleChange('formDescription', e.target.value)}
                   disabled={loading}
                 />
               </Grid>
@@ -359,7 +365,7 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
                   loading={loadingActs}
                   value={selectedAct}
                   onChange={handleActChange}
-                  id='document-act-select'
+                  id='form-act-select'
                   renderInput={params => (
                     <CustomTextField
                       {...params}
@@ -388,7 +394,7 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DatePicker
                     label='Date'
-                    value={documentData.date ? dayjs(documentData.date) : null}
+                    value={formData.date ? dayjs(formData.date) : null}
                     onChange={newValue => handleChange('date', newValue ? newValue.format('YYYY-MM-DD') : null)}
                     slotProps={{
                       textField: {
@@ -410,7 +416,7 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={documentData.status}
+                      checked={formData.status}
                       onChange={e => handleChange('status', e.target.checked)}
                       color='primary'
                       disabled={loading}
@@ -424,7 +430,7 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
                 <div className='border-2 border-dashed rounded-lg p-6 relative'>
                   <input
                     type='file'
-                    id='document-file'
+                    id='form-file'
                     onChange={handleFileChange}
                     className='absolute inset-0 opacity-0 cursor-pointer'
                     disabled={loading}
@@ -487,4 +493,4 @@ const AddDocument = ({ open, setOpen, data, selectedActId }: AddDocumentProps) =
   )
 }
 
-export default AddDocument
+export default AddForm

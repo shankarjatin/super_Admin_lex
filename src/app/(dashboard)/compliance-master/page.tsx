@@ -6,10 +6,9 @@ import CustomTextField from '@core/components/mui/TextField'
 import CustomAutocomplete from '@core/components/mui/Autocomplete'
 import axios from 'axios'
 import https from 'https'
-import { CircularProgress, Alert, Card, CardHeader, Button } from '@mui/material'
+import { CircularProgress, Alert, Card, CardHeader } from '@mui/material'
 import InternationalActTable from '@/views/apps/act-master/InternationalActTable'
-import FormMasterTable from '@/views/apps/form-master/FormMasterTable'
-import AddForm from '@/components/dialogs/add-form'
+import ComplianceMasterTable from '@/views/apps/compliance-master/ComplianceMasterTable'
 
 // Create a custom axios instance that bypasses SSL verification
 const axiosInstance = axios.create({
@@ -65,9 +64,8 @@ interface ActTableData {
   qty?: number // Required by ProductType
 }
 
-const FormMaster = () => {
+const ComplianceMaster = () => {
   const [options, setOptions] = useState<InternationalActOption[]>([])
-  const [openModal, setOpenModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [inputValue, setInputValue] = useState('')
@@ -111,7 +109,7 @@ const FormMaster = () => {
 
       // Use our custom axios instance to handle SSL issues
       const response = await axiosInstance.get(
-        `https://ai.lexcomply.co/v2/api/formMaster/getFormMasterList?id=${actId}`,
+        `https://ai.lexcomply.co/v2/api/actMaster/getInternationalAct?id=${actId}`,
         {
           headers: {
             'Content-Type': 'application/json'
@@ -153,7 +151,7 @@ const FormMaster = () => {
       } else {
         console.error('Invalid or empty response format for act details', response.data)
         setActDetails([]) // Clear act details in case of invalid data
-        // setError('No details found for the selected act.')
+        setError('No details found for the selected act.')
       }
     } catch (error) {
       console.error('Error fetching act details:', error)
@@ -183,83 +181,76 @@ const FormMaster = () => {
   }
 
   return (
-    <div className='flex flex-col gap-6'>
-      {/* Show error message if there's an error */}
-      {error && (
-        <Alert severity='error' sx={{ width: '100%' }}>
-          {error}
-        </Alert>
-      )}
-      <Card>
-        <CardHeader
-          title='Form Master'
-          action={
-            <Button variant='contained' onClick={() => setOpenModal(true)} startIcon={<i className='tabler-plus' />}>
-              Add Form
-            </Button>
-          }
-        />
-      </Card>
+    <Card>
+      <CardHeader title='Compliance Master' />
+      <div className='flex flex-col gap-6 px-5 py-4'>
+        {/* Show error message if there's an error */}
+        {error && (
+          <Alert severity='error' sx={{ width: '100%' }}>
+            {error}
+          </Alert>
+        )}
 
-      {/* Autocomplete dropdown */}
-      <div className='w-full'>
-        <CustomAutocomplete
-          fullWidth
-          options={options}
-          value={selectedAct}
-          loading={loading}
-          inputValue={inputValue}
-          onInputChange={(event, newInputValue) => {
-            setInputValue(newInputValue)
-          }}
-          onChange={handleActChange}
-          id='autocomplete-international-acts'
-          getOptionLabel={option => option.name || ''}
-          isOptionEqualToValue={(option, value) => option.actId === value.actId}
-          renderInput={params => (
-            <CustomTextField
-              {...params}
-              label='Search International Acts'
-              placeholder='Start typing to search acts'
-              InputProps={{
-                ...params.InputProps,
-                endAdornment: (
-                  <>
-                    {loading ? <CircularProgress color='inherit' size={20} /> : null}
-                    {params.InputProps.endAdornment}
-                  </>
-                )
-              }}
-            />
-          )}
-        />
-      </div>
-
-      {/* Show loading indicator while fetching details */}
-      {detailsLoading && (
-        <div className='flex justify-center py-4'>
-          <CircularProgress />
+        {/* Autocomplete dropdown */}
+        <div className='w-full'>
+          <CustomAutocomplete
+            fullWidth
+            options={options}
+            value={selectedAct}
+            loading={loading}
+            inputValue={inputValue}
+            onInputChange={(event, newInputValue) => {
+              setInputValue(newInputValue)
+            }}
+            onChange={handleActChange}
+            id='autocomplete-international-acts'
+            getOptionLabel={option => option.name || ''}
+            isOptionEqualToValue={(option, value) => option.actId === value.actId}
+            renderInput={params => (
+              <CustomTextField
+                {...params}
+                label='Search International Acts'
+                placeholder='Start typing to search acts'
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {loading ? <CircularProgress color='inherit' size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  )
+                }}
+              />
+            )}
+          />
         </div>
-      )}
 
-      {/* Pass the fetched data to the table component */}
-      {!detailsLoading && selectedAct && (
+        {/* Show loading indicator while fetching details */}
+        {detailsLoading && (
+          <div className='flex justify-center py-4'>
+            <CircularProgress />
+          </div>
+        )}
+
+        {/* Pass the fetched data to the table component */}
+
+        {/* Show a message when no act is selected yet */}
+        {!detailsLoading && actDetails.length === 0 && !error && (
+          <div className='text-center py-8 text-textSecondary'>
+            Please select an act from the dropdown to view details.
+          </div>
+        )}
+      </div>
+      {!detailsLoading && actDetails.length > 0 && (
         <>
-          <Card>
-            <FormMasterTable data={actDetails} onRefresh={() => fetchActDetails(selectedAct.id)} />
-          </Card>
+          {/* <div className='mb-2'>
+            <Alert severity='success'>Act details loaded successfully.</Alert>
+          </div> */}
+          <ComplianceMasterTable data={actDetails} />
         </>
       )}
-
-      {/* Show a message when no act is selected yet */}
-      {!detailsLoading && !selectedAct && !error && (
-        <div className='text-center py-8 text-textSecondary'>
-          Please select an act from the dropdown to view details.
-        </div>
-      )}
-      <AddForm open={openModal} setOpen={setOpenModal} />
-    </div>
+    </Card>
   )
 }
 
-export default FormMaster
+export default ComplianceMaster

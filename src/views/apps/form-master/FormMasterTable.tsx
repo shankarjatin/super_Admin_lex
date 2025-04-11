@@ -228,7 +228,7 @@ const FormMasterTable = ({ data, onEdit, onDelete, onRefresh }: FormMasterTableP
 
   return (
     <>
-      <div className='flex justify-between items-center mb-4'>
+      <div className='flex justify-between items-center mb-4 px-8'>
         <Typography variant='h6'>Forms ({filteredData.length})</Typography>
         <CustomTextField
           select

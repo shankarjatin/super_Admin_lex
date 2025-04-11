@@ -1,7 +1,12 @@
 'use client'
 
 // React Imports
-import { useEffect, useState, ChangeEvent } from 'react'
+import { useEffect, useState } from 'react'
+import type { ChangeEvent } from 'react'
+
+// Axios Import
+import axios from 'axios'
+import https from 'https'
 
 // MUI Imports
 import Dialog from '@mui/material/Dialog'
@@ -12,407 +17,261 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import Grid from '@mui/material/Grid'
 import MenuItem from '@mui/material/MenuItem'
+import CustomTextField from '@core/components/mui/TextField'
 import Switch from '@mui/material/Switch'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import CircularProgress from '@mui/material/CircularProgress'
+import Snackbar from '@mui/material/Snackbar'
+import Alert from '@mui/material/Alert'
 
-// Third-party Imports
-import classnames from 'classnames'
+// Create axios instance
+const axiosInstance = axios.create({
+  httpsAgent: new https.Agent({
+    rejectUnauthorized: false
+  })
+})
 
 // Type Import
-import type { CustomInputVerticalData } from '@core/components/custom-inputs/types'
-
-// Component Imports
-import CustomInputVertical from '@core/components/custom-inputs/Vertical'
-import DialogCloseButton from '../DialogCloseButton'
-import CustomTextField from '@core/components/mui/TextField'
-
-// Add interface for API response data matching
-interface InternationalActResponse {
-  id: string
-  act_id: string
-  category: string
-  continent: string
-  country: string
-  state: string
-  city: string
-  region: string
-  isDeleted: string
-  actId: number
-  actName: string
-  actDescription: string
-}
-
-type AddStatesData = {
+type AddEditStateData = {
   id?: string
-  name?: string
-  firstName?: string
-  lastName?: string
-  actName?: string
-  country?: string
-  act1?: string
-  act2?: string
-  landmark?: string
-  city?: string
-  state?: string
-  zipCode?: string
-  act_desc?: string
-  url?: string
-  category?: string
-  industry_type?: string
-  continent?: string
-  region?: string
-  subject1?: string
+  stateName: string
+  stateShortName: string
+  active?: boolean
+  status?: string | number | boolean
 }
 
-type AddStatesProps = {
+type AddEditStateProps = {
   open: boolean
   setOpen: (open: boolean) => void
-  data?: InternationalActResponse | AddStatesData | null
+  data?: AddEditStateData | null
   isLoading?: boolean
+  onSubmit?: (data: any) => Promise<void>
 }
 
-const countries = ['Select Country', 'France', 'Russia', 'China', 'UK', 'US']
-
-const initialActData: AddStatesData = {
-  name: '',
-  actName: '',
-  firstName: '',
-  lastName: '',
-  country: '',
-  act1: '',
-  act2: '',
-  landmark: '',
-  city: '',
-  state: '',
-  zipCode: '',
-  act_desc: '',
-  url: '',
-  category: '',
-  industry_type: '',
-  continent: '',
-  region: '',
-  subject1: ''
+// Define Snackbar notification type
+type SnackbarNotification = {
+  open: boolean
+  message: string
+  severity: 'success' | 'error' | 'info' | 'warning'
 }
 
-const customInputData: CustomInputVerticalData[] = [
-  {
-    title: 'Home',
-    content: 'Delivery Time (7am - 9pm)',
-    value: 'home',
-    isSelected: true,
-    asset: 'tabler-home'
-  },
-  {
-    title: 'Office',
-    content: 'Delivery Time (10am - 6pm)',
-    value: 'office',
-    asset: 'tabler-building-skyscraper'
-  }
-]
+const initialStateData: AddEditStateData = {
+  stateName: '',
+  stateShortName: '',
+  active: false
+}
 
-const AddStates = ({ open, setOpen, data, isLoading = false }: AddStatesProps) => {
-  // Vars
-  const initialSelected: string = customInputData?.find(item => item.isSelected)?.value || ''
-
+const AddEditState = ({ open, setOpen, data, isLoading = false, onSubmit }: AddEditStateProps) => {
   // States
-  const [selected, setSelected] = useState<string>(initialSelected)
-  const [actData, setActData] = useState<AddStatesData>(initialActData)
-  const [formTouched, setFormTouched] = useState(false)
+  console.log('AddEditState data:', data)
+  const [stateData, setStateData] = useState<AddEditStateData>(initialStateData)
+  const [loading, setLoading] = useState(false)
 
-  const handleChange = (prop: string | ChangeEvent<HTMLInputElement>) => {
-    if (typeof prop === 'string') {
-      setSelected(prop)
+  // Snackbar state
+  const [snackbar, setSnackbar] = useState<SnackbarNotification>({
+    open: false,
+    message: '',
+    severity: 'info'
+  })
+
+  // Update stateData when the dialog opens or when data is provided
+  useEffect(() => {
+    if (data) {
+      // Normalize the data format to ensure consistency
+      setStateData({
+        id: data.id,
+        stateName: data.stateName || '',
+        stateShortName: data.stateShortName || '',
+        active:
+          data.active !== undefined ? data.active : data.status === true || data.status === 1 || data.status === '1'
+      })
     } else {
-      setSelected((prop.target as HTMLInputElement).value)
+      // Reset to initial state when adding new
+      setStateData(initialStateData)
     }
-    setFormTouched(true)
+  }, [open, data])
+
+  // Handle snackbar close
+  const handleSnackbarClose = () => {
+    setSnackbar(prev => ({ ...prev, open: false }))
   }
 
-  // Format and set form data when API data is received
-  useEffect(() => {
-    if (!data) {
-      setActData(initialActData)
-      setFormTouched(false)
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Basic validation
+    if (!stateData.stateName || !stateData.stateShortName) {
+      setSnackbar({
+        open: true,
+        message: 'Please fill in all required fields',
+        severity: 'error'
+      })
       return
     }
 
-    console.log('Received data for edit form:', data)
+    try {
+      setLoading(true)
 
-    // Check if data is coming from the API (InternationalActResponse)
-    if ('actId' in data || 'act_id' in data) {
-      const apiData = data as InternationalActResponse
+      // If onSubmit prop is provided, use it
+      if (onSubmit) {
+        await onSubmit({
+          id: stateData.id,
+          stateName: stateData.stateName,
+          stateShortName: stateData.stateShortName,
+          status: stateData.active // Use active as status
+        })
+        return // Let the parent component handle success/errors
+      }
 
-      setActData({
-        id: apiData.actId.toString(),
-        name: apiData.actName || '',
-        actName: apiData.actName || '',
-        act_desc: apiData.actDescription || '',
-        country: apiData.country || '',
-        state: apiData.state || '',
-        city: apiData.city || '',
-        category: apiData.category?.toLowerCase() || '',
-        continent: apiData.continent?.toLowerCase() || '',
-        region: apiData.region || '',
-        // Default values for fields not in API response
-        industry_type: apiData.category === 'State' ? 'state' : 'central',
-        url: '',
-        subject1: ''
+      // Otherwise handle submission internally
+      // Prepare the data to be sent to the API
+      const apiRequestData = {
+        edit: stateData.id ? '1' : '0',
+        name: stateData.stateName,
+        short_name: stateData.stateShortName || '',
+        status: stateData.active ? '1' : '0'
+      }
+
+      // Add ID if editing
+      if (stateData.id) {
+        apiRequestData['id'] = stateData.id
+      }
+
+      console.log('Sending data to API:', apiRequestData)
+
+      // Make the API call
+      const response = await axiosInstance.post(
+        'https://ai.lexcomply.co/v2/api/stateMaster/createStateMaster',
+        apiRequestData
+      )
+
+      console.log('API Response:', response.data)
+
+      // Check if the response indicates success
+      if (!response.data || !response.data.success) {
+        throw new Error(response.data?.message || 'Failed to save state')
+      }
+
+      // If we get here, the request was successful
+      setSnackbar({
+        open: true,
+        message: stateData.id ? 'State updated successfully' : 'State created successfully',
+        severity: 'success'
       })
-    } else {
-      // If it's already in the right format, just use it
-      setActData({
-        ...initialActData,
-        ...data
+
+      // Close the dialog after a short delay
+      setTimeout(() => {
+        setOpen(false)
+      }, 1000)
+    } catch (error) {
+      console.error('Error:', error)
+
+      // Show error message
+      setSnackbar({
+        open: true,
+        message: error instanceof Error ? error.message : 'Failed to save state',
+        severity: 'error'
       })
+    } finally {
+      setLoading(false)
     }
-
-    setFormTouched(false)
-  }, [data, open])
-
-  // Handle field change
-  const handleFieldChange = (field: keyof AddStatesData, value: string) => {
-    setActData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-    setFormTouched(true)
-  }
-
-  // Form submission handler
-  const handleSubmit = () => {
-    console.log('Submitting updated act data:', actData)
-    // Add your API call to update the act here
-
-    // Close the dialog after submission
-    setOpen(false)
   }
 
   return (
-    <Dialog
-      open={open}
-      maxWidth='md'
-      scroll='body'
-      onClose={() => {
-        if (!isLoading) {
-          setOpen(false)
-          setSelected(initialSelected)
-        }
-      }}
-      sx={{ '& .MuiDialog-paper': { overflow: 'visible' } }}
-    >
-      <DialogTitle variant='h4' className='flex gap-2 flex-col text-center sm:pbs-12 sm:pbe-6 sm:pli-12'>
-        Edit Act
-        <Typography component='span' className='flex flex-col text-center'>
-          Edit Act for future billing
-          {isLoading && <CircularProgress size={24} className='mx-auto mt-2' />}
-        </Typography>
-      </DialogTitle>
-      <form
-        onSubmit={e => {
-          e.preventDefault()
-          handleSubmit()
-        }}
+    <>
+      <Dialog
+        open={open}
+        maxWidth='md'
+        scroll='body'
+        onClose={() => !loading && !isLoading && setOpen(false)}
+        sx={{ '& .MuiDialog-paper': { overflow: 'visible' } }}
       >
-        <DialogContent className='pbs-0 sm:pli-16'>
-          <DialogCloseButton onClick={() => setOpen(false)} disableRipple disabled={isLoading}>
-            <i className='tabler-x' />
-          </DialogCloseButton>
+        <DialogTitle variant='h4' className='flex gap-2 flex-col text-center sm:pbs-12 sm:pbe-6 sm:pli-12'>
+          {stateData.id ? 'Edit State' : 'Add New State'}
+          <Typography component='span' className='flex flex-col text-center'>
+            {stateData.id ? 'Edit the state information' : 'Add state details'}
+          </Typography>
+        </DialogTitle>
 
-          {/* Hidden field for ID */}
-          <input type='hidden' name='id' value={actData?.id || '0'} />
-
-          {isLoading ? (
-            <div className='flex justify-center py-8'>
-              <CircularProgress />
-            </div>
-          ) : (
+        <form onSubmit={handleSubmit}>
+          <DialogContent className='pbs-0 sm:pli-16'>
             <Grid container spacing={6}>
+              {/* State Name */}
               <Grid item xs={12} sm={6}>
                 <CustomTextField
                   fullWidth
-                  label='Name'
-                  name='name'
+                  label='State Name'
+                  name='stateName'
                   required
-                  placeholder='Enter Name'
-                  value={actData?.name || ''}
-                  onChange={e => handleFieldChange('name', e.target.value)}
-                  disabled={isLoading}
+                  placeholder='Enter State Name'
+                  value={stateData.stateName}
+                  onChange={e => setStateData({ ...stateData, stateName: e.target.value })}
+                  disabled={loading || isLoading}
                 />
               </Grid>
-              {/* <Grid item xs={12} sm={6}>
+
+              {/* State Short Name */}
+              <Grid item xs={12} sm={6}>
                 <CustomTextField
                   fullWidth
-                  label='Act Name'
-                  name='actName'
-                  placeholder='Enter Act Name'
-                  value={actData?.actName || ''}
-                  onChange={e => handleFieldChange('actName', e.target.value)}
-                  disabled={isLoading}
+                  label='State Short Name'
+                  name='stateShortName'
+                  required
+                  placeholder='Enter State Short Name'
+                  value={stateData.stateShortName}
+                  onChange={e => setStateData({ ...stateData, stateShortName: e.target.value })}
+                  disabled={loading || isLoading}
                 />
-              </Grid> */}
+              </Grid>
+
+              {/* Active Switch */}
               <Grid item xs={12}>
-                <CustomTextField
-                  fullWidth
-                  multiline
-                  required
-                  rows={2}
-                  label='Description'
-                  name='act_desc'
-                  placeholder='Act Description'
-                  inputProps={{ maxLength: 220 }}
-                  value={actData?.act_desc || ''}
-                  onChange={e => handleFieldChange('act_desc', e.target.value)}
-                  disabled={isLoading}
-                />
-                <Typography variant='caption' className='text-right block'>
-                  {220 - (actData?.act_desc?.length || 0)} chars left
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <CustomTextField
-                  fullWidth
-                  label='URL'
-                  name='url'
-                  placeholder='http://www.XYZ.com'
-                  value={actData?.url || ''}
-                  onChange={e => handleFieldChange('url', e.target.value)}
-                  disabled={isLoading}
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={stateData.active || false}
+                      onChange={e => setStateData({ ...stateData, active: e.target.checked })}
+                      name='active'
+                      disabled={loading || isLoading}
+                    />
+                  }
+                  label='Active'
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <CustomTextField
-                  fullWidth
-                  required
-                  label='Subject 1'
-                  name='subject1'
-                  placeholder='Enter Subject'
-                  value={actData?.subject1 || ''}
-                  onChange={e => handleFieldChange('subject1', e.target.value)}
-                  disabled={isLoading}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <CustomTextField
-                  select
-                  fullWidth
-                  label='Category'
-                  name='category'
-                  required
-                  value={actData?.category || ''}
-                  onChange={e => handleFieldChange('category', e.target.value)}
-                  disabled={isLoading}
-                >
-                  <MenuItem value='internal'>Internal</MenuItem>
-                  <MenuItem value='external'>External</MenuItem>
-                  <MenuItem value='statutory'>Statutory</MenuItem>
-                </CustomTextField>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <CustomTextField
-                  select
-                  fullWidth
-                  label='Continent'
-                  name='continent'
-                  required
-                  value={actData?.continent || ''}
-                  onChange={e => handleFieldChange('continent', e.target.value)}
-                  disabled={isLoading}
-                >
-                  <MenuItem value='asia'>Asia</MenuItem>
-                  <MenuItem value='europe'>Europe</MenuItem>
-                  <MenuItem value='north-america'>North America</MenuItem>
-                  <MenuItem value='south-america'>South America</MenuItem>
-                  <MenuItem value='australia'>Australia</MenuItem>
-                  <MenuItem value='africa'>Africa</MenuItem>
-                </CustomTextField>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <CustomTextField
-                  select
-                  fullWidth
-                  label='Type'
-                  name='industry_type'
-                  required
-                  value={actData?.industry_type || ''}
-                  onChange={e => handleFieldChange('industry_type', e.target.value)}
-                  disabled={isLoading}
-                >
-                  <MenuItem value='central'>Central</MenuItem>
-                  <MenuItem value='state'>State</MenuItem>
-                </CustomTextField>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <CustomTextField
-                  fullWidth
-                  label='Country'
-                  name='country'
-                  placeholder='Enter Country'
-                  value={actData?.country || ''}
-                  onChange={e => handleFieldChange('country', e.target.value)}
-                  disabled={isLoading}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <CustomTextField
-                  fullWidth
-                  label='Region (Optional)'
-                  name='region'
-                  placeholder='Enter Region'
-                  value={actData?.region || ''}
-                  onChange={e => handleFieldChange('region', e.target.value)}
-                  disabled={isLoading}
-                />
-              </Grid>
-              {/* Add State field */}
-              <Grid item xs={12} sm={6}>
-                <CustomTextField
-                  fullWidth
-                  label='State'
-                  name='state'
-                  placeholder='Enter State'
-                  value={actData?.state || ''}
-                  onChange={e => handleFieldChange('state', e.target.value)}
-                  disabled={isLoading}
-                />
-              </Grid>
-              {/* Add City field if present in data */}
-              {actData?.city && (
-                <Grid item xs={12} sm={6}>
-                  <CustomTextField
-                    fullWidth
-                    label='City'
-                    name='city'
-                    placeholder='Enter City'
-                    value={actData?.city || ''}
-                    onChange={e => handleFieldChange('city', e.target.value)}
-                    disabled={isLoading}
-                  />
-                </Grid>
-              )}
             </Grid>
-          )}
-        </DialogContent>
-        <DialogActions className='justify-center pbs-0 sm:pbe-16 sm:pli-16'>
-          <Button variant='contained' type='submit' disabled={isLoading || (!formTouched && !!data)}>
-            Update
-          </Button>
-          <Button
-            variant='tonal'
-            color='secondary'
-            onClick={() => {
-              setOpen(false)
-              setSelected(initialSelected)
-            }}
-            type='reset'
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+          </DialogContent>
+
+          <DialogActions className='justify-center pbs-0 sm:pbe-16 sm:pli-16'>
+            <Button variant='contained' type='submit' disabled={loading || isLoading}>
+              {loading || isLoading ? <CircularProgress size={24} /> : stateData.id ? 'Update' : 'Submit'}
+            </Button>
+            <Button
+              variant='tonal'
+              color='secondary'
+              onClick={() => !loading && !isLoading && setOpen(false)}
+              type='reset'
+              disabled={loading || isLoading}
+            >
+              Cancel
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* Local Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbar.severity} variant='filled'>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </>
   )
 }
 
-export default AddStates
+export default AddEditState

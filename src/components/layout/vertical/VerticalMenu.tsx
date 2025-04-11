@@ -1,3 +1,5 @@
+'use client'
+
 // MUI Imports
 import { useTheme } from '@mui/material/styles'
 
@@ -70,7 +72,7 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
       >
         {' '}
         <MenuItem href='/dashboard' icon={<i className='tabler-smart-home' />}>
-          DASHBOARD
+          Dashboard
         </MenuItem>
       </Menu>
       <Menu
@@ -80,9 +82,21 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
         renderExpandedMenuItemIcon={{ icon: <i className='tabler-circle text-xs' /> }}
         menuSectionStyles={menuSectionStyles(verticalNavOptions, theme)}
       >
-        <SubMenu label='ACT MASTER' icon={<i className='tabler-info-circle' />}>
-          <MenuItem href='/act-master'>ALL</MenuItem>
-          <MenuItem href='/act-master-international'>INTERNATIONAL</MenuItem>
+        <SubMenu label='Act Master' icon={<i className='tabler-info-circle' />}>
+          <MenuItem href='/act-master'>All</MenuItem>
+          <MenuItem href='/act-master-international'>International</MenuItem>
+        </SubMenu>
+      </Menu>
+      <Menu
+        popoutMenuOffset={{ mainAxis: 23 }}
+        menuItemStyles={menuItemStyles(verticalNavOptions, theme)}
+        renderExpandIcon={({ open }) => <RenderExpandIcon open={open} transitionDuration={transitionDuration} />}
+        renderExpandedMenuItemIcon={{ icon: <i className='tabler-circle text-xs' /> }}
+        menuSectionStyles={menuSectionStyles(verticalNavOptions, theme)}
+      >
+        <SubMenu label='Compliance Master' icon={<i className='tabler-info-circle' />}>
+          <MenuItem href='/compliance-master'>General</MenuItem>
+          <MenuItem href='/future-compliance'>Future Compliance</MenuItem>
         </SubMenu>
       </Menu>
       <Menu
@@ -94,28 +108,25 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
       >
         {' '}
         <MenuItem href='/company-master' icon={<i className='tabler-info-circle' />}>
-          COMPANY MASTER
+          Company Master
         </MenuItem>
         <MenuItem href='/document-master' icon={<i className='tabler-info-circle' />}>
-          DOCUMENT MASTER
+          Document Master
         </MenuItem>
         <MenuItem href='/form-master' icon={<i className='tabler-info-circle' />}>
-          FORM MASTER
+          Form Master
         </MenuItem>
         <MenuItem href='/states-master' icon={<i className='tabler-info-circle' />}>
-          STATES MASTER
-        </MenuItem>
-        <MenuItem href='/due-date-pattern' icon={<i className='tabler-info-circle' />}>
-          DUE DATE PATTERN
+          States Master
         </MenuItem>
         <MenuItem href='/due-date-change' icon={<i className='tabler-info-circle' />}>
-          DUE DATE CHANGE
+          Due Date Change
         </MenuItem>
         <MenuItem href='/act-wise-email' icon={<i className='tabler-info-circle' />}>
-          ACT WISE EMAIL
+          Act Wise Email
         </MenuItem>
         <MenuItem href='/update-compilance' icon={<i className='tabler-info-circle' />}>
-          UPDATE COMPILANCE
+          Update Compliance
         </MenuItem>
       </Menu>
       {/* <Menu

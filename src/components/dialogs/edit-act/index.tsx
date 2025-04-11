@@ -204,7 +204,6 @@ const EditAct = ({ open, setOpen, data, isLoading = false }: EditActProps) => {
       <DialogTitle variant='h4' className='flex gap-2 flex-col text-center sm:pbs-12 sm:pbe-6 sm:pli-12'>
         Edit Act
         <Typography component='span' className='flex flex-col text-center'>
-          Edit Act for future billing
           {isLoading && <CircularProgress size={24} className='mx-auto mt-2' />}
         </Typography>
       </DialogTitle>
