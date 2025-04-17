@@ -10,6 +10,7 @@ import { CircularProgress, Alert, CardHeader, Card, Button } from '@mui/material
 import InternationalActTable from '@/views/apps/act-master/InternationalActTable'
 import DocumentMasterTable from '@/views/apps/document-master/DocumentMasterTable'
 import AddDocument from '@/components/dialogs/add-document'
+import CopyLibrary from '@/components/dialogs/add-document/copyLibrary'
 
 // Create a custom axios instance that bypasses SSL verification
 const axiosInstance = axios.create({
@@ -87,6 +88,7 @@ const DocumentMaster = () => {
   const [documents, setDocuments] = useState<DocumentTableData[]>([])
   const [error, setError] = useState<string | null>(null)
   const [openModal, setOpenModal] = useState(false)
+  const [copyLibraryOpen, setCopyLibraryOpen] = useState(false)
 
   // Fetch dropdown options from the API
   useEffect(() => {
@@ -208,9 +210,18 @@ const DocumentMaster = () => {
         <CardHeader
           title='Document Master'
           action={
-            <Button variant='contained' onClick={() => setOpenModal(true)} startIcon={<i className='tabler-plus' />}>
-              Add Document
-            </Button>
+            <div className='flex gap-4'>
+              <Button variant='contained' onClick={() => setOpenModal(true)} startIcon={<i className='tabler-plus' />}>
+                Add Document
+              </Button>
+              <Button
+                variant='contained'
+                onClick={() => setCopyLibraryOpen(true)}
+                startIcon={<i className='tabler-copy' />}
+              >
+                Copy Library
+              </Button>
+            </div>
           }
         />
       </Card>
@@ -278,6 +289,7 @@ const DocumentMaster = () => {
         )}
       </div>
       <AddDocument open={openModal} setOpen={setOpenModal} />
+      <CopyLibrary open={copyLibraryOpen} setOpen={setCopyLibraryOpen} />
       {/* Add your document add/edit modal component here */}
       {/* <AddEditDocument open={openModal} setOpen={setOpenModal} /> */}
     </>

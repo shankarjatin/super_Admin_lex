@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from 'react'
 // MUI Imports
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
-import { Icon } from '@mui/material'
 import IconButton from '@mui/material/IconButton'
 import TablePagination from '@mui/material/TablePagination'
 import Tooltip from '@mui/material/Tooltip'
@@ -39,6 +38,8 @@ import {
   type ColumnFiltersState
 } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
+import axios from 'axios'
+import https from 'https'
 
 // Type Imports
 import type { ThemeColor } from '@core/types'
@@ -46,13 +47,46 @@ import type { ThemeColor } from '@core/types'
 // Component Imports
 import OptionMenu from '@core/components/option-menu'
 import TablePaginationComponent from '../../../components/TablePaginationComponent'
+import CustomAutocomplete from '@core/components/mui/Autocomplete'
 
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
 import AddExcel from '@/components/dialogs/compliance-master/addExcel'
 import TransferCompliance from '@/components/dialogs/compliance-master/transfer'
-import AddDocument from '@/components/dialogs/add-document'
 import AddCompliance from '@/components/dialogs/compliance-master/addCompliance'
+import ExportCompliance from './ExportCompliance'
+import CopyCompliance from '@/components/dialogs/compliance-master/copyCompliane'
+
+// Create a custom axios instance that bypasses SSL verification
+const axiosInstance = axios.create({
+  httpsAgent: new https.Agent({
+    rejectUnauthorized: false
+  })
+})
+
+// Define the type for the dropdown API response
+interface InternationalActOption {
+  id: number
+  actId: number
+  name: string
+  type?: string
+}
+
+// Define the type for the act details API response
+interface InternationalActDetails {
+  id: string
+  act_id: string
+  category: string
+  continent: string
+  country: string
+  state: string
+  city: string
+  region: string
+  isDeleted: string
+  actId: number
+  actName: string
+  actDescription: string
+}
 
 type ComplianceDataType = {
   id: string
@@ -70,6 +104,20 @@ type ComplianceDataType = {
   creation?: string
   effected?: string
   status?: string
+  name?: string
+  productName?: string
+  country?: string
+  city?: string
+  category?: string
+  continent?: string
+  region?: string
+  type?: string
+  subject?: string
+  price?: number
+  complianceCount?: number
+  sku?: string
+  stock?: boolean
+  qty?: number
 }
 
 // Define status color mapping
@@ -86,44 +134,153 @@ const statusObj: {
   'On Event': { title: 'On Event', color: 'error' }
 }
 
-// Define interface for props
-interface ComplianceMasterTableProps {
-  data: ComplianceDataType[]
-  onEdit?: (id: string) => void
-  onExport?: (id: string) => void
-  onRefresh?: () => void
-  loading?: boolean
-}
-
 // Column Definitions
 const columnHelper = createColumnHelper<ComplianceDataType>()
 
-const ComplianceMasterTable = ({
-  data = [],
-  onEdit,
-  onExport,
-  onRefresh,
-  loading = false
-}: ComplianceMasterTableProps) => {
-  // States
+const ComplianceMasterTable = () => {
+  // API and data states
+  const [options, setOptions] = useState<InternationalActOption[]>([])
+  const [loadingOptions, setLoadingOptions] = useState(true)
+  const [inputValue, setInputValue] = useState('')
+  const [selectedAct, setSelectedAct] = useState<InternationalActOption | null>(null)
+  const [actDetails, setActDetails] = useState<ComplianceDataType[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [detailsLoading, setDetailsLoading] = useState(false)
+
+  // Table states
   const [rowSelection, setRowSelection] = useState({})
   const [globalFilter, setGlobalFilter] = useState<string>('')
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [pageSize, setPageSize] = useState(10)
   const [pageIndex, setPageIndex] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
+
+  // Dialog states
   const [exportDialogOpen, setExportDialogOpen] = useState<boolean>(false)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [exportFormat, setExportFormat] = useState<'pdf' | 'excel'>('pdf')
   const [openModal, setOpenModal] = useState<boolean>(false)
   const [excelDialogOpen, setExcelDialogOpen] = useState<boolean>(false)
   const [transferDialogOpen, setTransferDialogOpen] = useState<boolean>(false)
+  const [exportComplianceOpen, setExportComplianceOpen] = useState<boolean>(false)
+  const [copyComplianceOpen, setCopyComplianceOpen] = useState<boolean>(false)
+  // Fetch dropdown options from the API
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        setLoadingOptions(true)
+        setError(null)
+        const response = await axiosInstance.get('https://ai.lexcomply.co/v2/api/actMaster/getInternationalActDrop', {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        const data = response.data // API response data
+        console.log('Dropdown options loaded:', data.length, 'items')
+        setOptions(data) // Update state with fetched data
+      } catch (error) {
+        console.error('Error fetching dropdown data:', error)
+        setOptions([]) // Set empty array in case of error
+        setError('Failed to load acts. Please try again later.')
+      } finally {
+        setLoadingOptions(false)
+      }
+    }
+
+    fetchOptions()
+  }, [])
+
+  // Function to fetch act details when an act is selected
+  const fetchActDetails = async (actId: number) => {
+    try {
+      setDetailsLoading(true)
+      setError(null)
+
+      console.log(`Fetching details for act ID: ${actId}`)
+
+      // Use our custom axios instance to handle SSL issues
+      const response = await axiosInstance.get(
+        `https://ai.lexcomply.co/v2/api/actMaster/getInternationalAct?id=${actId}`,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        // Map the API response to the format expected by the table component
+        const formattedData = response.data.map((act: InternationalActDetails) => {
+          return {
+            id: act.id || act.act_id || String(act.actId) || '',
+            name: act.actName || '',
+            productName: act.actName || '',
+            description: act.actDescription || '',
+            country: act.country || 'Global',
+            state: act.state || '',
+            city: act.city || '',
+            category: act.category || '',
+            continent: act.continent || '',
+            region: act.region || '',
+            type: act.category === 'State' ? 'state' : 'central', // Default type based on category
+            subject: '', // Not available in the response
+            scope: act.state ? 'State' : 'National',
+            status: 'Active', // Default status
+            complianceCount: 0, // Not available in the response
+            sku: 'SKU-' + act.id, // Required by ProductType
+            stock: true, // Required by ProductType
+            qty: 1 // Required by ProductType
+          }
+        })
+
+        setActDetails(formattedData) // Set the formatted act details in state
+      } else {
+        setActDetails([]) // Clear act details in case of invalid data
+        setError('No details found for the selected act.')
+      }
+    } catch (error) {
+      console.error('Error fetching act details:', error)
+      setActDetails([]) // Clear act details in case of error
+      setError('Failed to load act details. Please try again later.')
+    } finally {
+      setDetailsLoading(false)
+    }
+  }
+
+  // Handle refresh button click
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    try {
+      if (selectedAct?.id) {
+        await fetchActDetails(selectedAct.id)
+      }
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  // Handle act selection from dropdown
+  const handleActChange = (event: any, newValue: InternationalActOption | null) => {
+    if (newValue && newValue.id) {
+      fetchActDetails(newValue.id)
+    } else {
+      setActDetails([])
+    }
+    setSelectedAct(newValue)
+  }
+
+  // Handle export action
+  const handleExport = () => {
+    if (selectedItemId) {
+      // Implement export logic
+      setExportDialogOpen(false)
+      setSelectedItemId(null)
+    }
+  }
+
   // Add this handler for Excel upload success
   const handleExcelUploadSuccess = () => {
-    // Refresh data after successful upload
-    if (onRefresh) {
-      onRefresh()
-    }
+    handleRefresh()
   }
 
   // Define columns with the requested structure
@@ -163,7 +320,7 @@ const ComplianceMasterTable = ({
         size: 180
       }),
 
-      // Scope/State column
+      // Rest of the columns remain the same
       columnHelper.accessor(row => row.scope || row.state || '', {
         id: 'scope_state',
         header: 'Scope/State',
@@ -228,7 +385,7 @@ const ComplianceMasterTable = ({
         size: 100
       }),
 
-      // History column
+      // Other columns remain the same...
       columnHelper.accessor('history', {
         header: 'History',
         cell: ({ row }) => (
@@ -260,7 +417,7 @@ const ComplianceMasterTable = ({
         header: 'Edit',
         cell: ({ row }) => (
           <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-            <IconButton color='primary' size='small' onClick={() => onEdit && onEdit(row.original.id)}>
+            <IconButton color='primary' size='small' onClick={() => console.log('Edit:', row.original.id)}>
               <i className='tabler-edit' />
             </IconButton>
           </Box>
@@ -309,7 +466,7 @@ const ComplianceMasterTable = ({
                 {
                   text: 'Edit',
                   icon: 'tabler-edit',
-                  menuItemProps: { onClick: () => onEdit && onEdit(row.original.id) }
+                  menuItemProps: { onClick: () => console.log('Edit', row.original.id) }
                 },
                 {
                   text: 'Export',
@@ -337,33 +494,12 @@ const ComplianceMasterTable = ({
         size: 120
       })
     ],
-    [onEdit]
+    []
   )
-
-  // Handle refresh button click
-  const handleRefresh = async () => {
-    if (!onRefresh) return
-
-    setIsRefreshing(true)
-    try {
-      await onRefresh()
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
-
-  // Handle export action
-  const handleExport = () => {
-    if (selectedItemId && onExport) {
-      onExport(selectedItemId)
-      setExportDialogOpen(false)
-      setSelectedItemId(null)
-    }
-  }
 
   // Create the table instance
   const table = useReactTable({
-    data,
+    data: actDetails,
     columns,
     state: {
       rowSelection,
@@ -387,38 +523,111 @@ const ComplianceMasterTable = ({
   return (
     <>
       <Card>
-        {/* Fixed Header - Non-scrolling section */}
+        {/* Card Header with Action Buttons - Always visible at top */}
+        <CardHeader
+          title=''
+          action={
+            <div className='flex flex-wrap justify-end gap-4'>
+              <Button
+                variant='contained'
+                className='max-sm:is-full is-auto'
+                onClick={() => setOpenModal(true)}
+                startIcon={<i className='tabler-plus' />}
+              >
+                Add Compliance
+              </Button>
+              <Button
+                variant='contained'
+                className='max-sm:is-full is-auto'
+                onClick={() => setExcelDialogOpen(true)}
+                startIcon={<i className='tabler-plus' />}
+              >
+                Add Excel
+              </Button>
+              <Button
+                variant='contained'
+                className='max-sm:is-full is-auto'
+                onClick={() => setTransferDialogOpen(true)}
+                startIcon={<i className='tabler-plus' />}
+              >
+                Transfer Compliance
+              </Button>
+              <Button
+                variant='contained'
+                className='max-sm:is-full is-auto'
+                onClick={() => setExportComplianceOpen(true)}
+                startIcon={<i className='tabler-file-export' />}
+                color='primary'
+              >
+                Export Compliance
+              </Button>
+              <Button
+                variant='contained'
+                className='max-sm:is-full is-auto'
+                onClick={() => setCopyComplianceOpen(true)}
+                startIcon={<i className='tabler-copy' />}
+                color='secondary'
+              >
+                Copy Compliance
+              </Button>
+            </div>
+          }
+          sx={{
+            flexDirection: ['column', 'row'],
+            alignItems: ['flex-start', 'center'],
+            '& .MuiCardHeader-action': {
+              mb: 0,
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'flex-end'
+            }
+          }}
+        />
 
         <Divider />
-        <div style={{ padding: '16px 24px' }}>
-          <div className='flex flex-wrap justify-start gap-4'>
-            <Button
-              variant='contained'
-              className='max-sm:is-full is-auto'
-              onClick={() => setOpenModal(true)}
-              startIcon={<i className='tabler-plus' />}
-            >
-              Add Compliance
-            </Button>
-            <Button
-              variant='contained'
-              className='max-sm:is-full is-auto'
-              onClick={() => setExcelDialogOpen(true)}
-              startIcon={<i className='tabler-plus' />}
-            >
-              Add Excel
-            </Button>
-            <Button
-              variant='contained'
-              className='max-sm:is-full is-auto'
-              onClick={() => setTransferDialogOpen(true)}
-              startIcon={<i className='tabler-plus' />}
-            >
-              Transfer Compliance
-            </Button>
-          </div>
+
+        {/* Show error message if there's an error */}
+        {error && (
+          <Alert severity='error' sx={{ mx: 4, my: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Autocomplete dropdown - Moved from page.tsx */}
+        <div className='w-full px-6 py-4'>
+          <CustomAutocomplete
+            fullWidth
+            options={options}
+            value={selectedAct}
+            loading={loadingOptions}
+            inputValue={inputValue}
+            onInputChange={(event, newInputValue) => {
+              setInputValue(newInputValue)
+            }}
+            onChange={handleActChange}
+            id='autocomplete-international-acts'
+            getOptionLabel={option => option.name || ''}
+            isOptionEqualToValue={(option, value) => option.actId === value.actId}
+            renderInput={params => (
+              <CustomTextField
+                {...params}
+                label='Search International Acts'
+                placeholder='Start typing to search acts'
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {loadingOptions ? <CircularProgress color='inherit' size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  )
+                }}
+              />
+            )}
+          />
         </div>
-        {/* Fixed Search Area - Non-scrolling section */}
+
+        {/* Search Area - Non-scrolling section */}
         <div style={{ padding: '16px 24px' }}>
           <div className='flex flex-wrap justify-between gap-4'>
             <CustomTextField
@@ -444,8 +653,8 @@ const ComplianceMasterTable = ({
 
             <div className='flex items-center gap-4'>
               <Tooltip title='Refresh data'>
-                <IconButton onClick={handleRefresh} disabled={isRefreshing || loading}>
-                  {isRefreshing || loading ? <CircularProgress size={24} /> : <i className='tabler-refresh' />}
+                <IconButton onClick={handleRefresh} disabled={isRefreshing || detailsLoading}>
+                  {isRefreshing || detailsLoading ? <CircularProgress size={24} /> : <i className='tabler-refresh' />}
                 </IconButton>
               </Tooltip>
 
@@ -470,84 +679,85 @@ const ComplianceMasterTable = ({
 
         <Divider />
 
+        {/* Show loading indicator while fetching details */}
+        {detailsLoading && (
+          <div className='flex justify-center py-8'>
+            <CircularProgress size={40} />
+          </div>
+        )}
+
+        {/* Show message when no act is selected */}
+        {!detailsLoading && actDetails.length === 0 && !error && (
+          <div className='text-center py-8 text-textSecondary'>
+            Please select an act from the dropdown to view details.
+          </div>
+        )}
+
         {/* Create a completely separate section for the scrollable table */}
-        <div style={{ position: 'relative', width: '100%' }}>
-          {/* This is the scrollable container */}
-          <div
-            style={{
-              overflowX: 'auto',
-              width: '100%'
-            }}
-          >
-            <table className={tableStyles.table} style={{ minWidth: '1500px' }}>
-              <colgroup>
-                {table.getAllColumns().map(column => (
-                  <col key={column.id} style={{ width: `${column.getSize()}px` }} />
-                ))}
-              </colgroup>
+        {!detailsLoading && actDetails.length > 0 && (
+          <div style={{ position: 'relative', width: '100%' }}>
+            {/* This is the scrollable container */}
+            <div
+              style={{
+                overflowX: 'auto',
+                width: '100%'
+              }}
+            >
+              <table className={tableStyles.table} style={{ minWidth: '1500px' }}>
+                <colgroup>
+                  {table.getAllColumns().map(column => (
+                    <col key={column.id} style={{ width: `${column.getSize()}px` }} />
+                  ))}
+                </colgroup>
 
-              <thead>
-                {table.getHeaderGroups().map(headerGroup => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map(header => (
-                      <th
-                        key={header.id}
-                        style={{
-                          width: `${header.getSize()}px`,
-                          maxWidth: `${header.getSize()}px`,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          padding: '12px 16px'
-                        }}
-                      >
-                        {/* Header content remains the same */}
-                        {header.isPlaceholder ? null : (
-                          <div
-                            className={classnames({
-                              'flex items-center': header.column.getIsSorted(),
-                              'cursor-pointer select-none': header.column.getCanSort()
-                            })}
-                            onClick={header.column.getToggleSortingHandler()}
-                            style={{
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            <Tooltip title={String(header.column.columnDef.header)}>
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {flexRender(header.column.columnDef.header, header.getContext())}
-                              </span>
-                            </Tooltip>
-                            {{
-                              asc: <i className='tabler-chevron-up text-xl' />,
-                              desc: <i className='tabler-chevron-down text-xl' />
-                            }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
-                          </div>
-                        )}
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
+                <thead>
+                  {table.getHeaderGroups().map(headerGroup => (
+                    <tr key={headerGroup.id}>
+                      {headerGroup.headers.map(header => (
+                        <th
+                          key={header.id}
+                          style={{
+                            width: `${header.getSize()}px`,
+                            maxWidth: `${header.getSize()}px`,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            padding: '12px 16px'
+                          }}
+                        >
+                          {/* Header content remains the same */}
+                          {header.isPlaceholder ? null : (
+                            <div
+                              className={classnames({
+                                'flex items-center': header.column.getIsSorted(),
+                                'cursor-pointer select-none': header.column.getCanSort()
+                              })}
+                              onClick={header.column.getToggleSortingHandler()}
+                              style={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <Tooltip title={String(header.column.columnDef.header)}>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {flexRender(header.column.columnDef.header, header.getContext())}
+                                </span>
+                              </Tooltip>
+                              {{
+                                asc: <i className='tabler-chevron-up text-xl' />,
+                                desc: <i className='tabler-chevron-down text-xl' />
+                              }[header.column.getIsSorted() as 'asc' | 'desc'] ?? null}
+                            </div>
+                          )}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
 
-              <tbody>
-                {/* Table body content remains the same */}
-                {loading ? (
-                  <tr>
-                    <td colSpan={columns.length} className='text-center p-4'>
-                      <CircularProgress size={40} />
-                    </td>
-                  </tr>
-                ) : table.getFilteredRowModel().rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={columns.length} className='text-center p-4'>
-                      <Typography>No data available</Typography>
-                    </td>
-                  </tr>
-                ) : (
-                  table
+                <tbody>
+                  {table
                     .getRowModel()
                     .rows.slice(0, table.getState().pagination.pageSize)
                     .map(row => (
@@ -567,44 +777,74 @@ const ComplianceMasterTable = ({
                           </td>
                         ))}
                       </tr>
-                    ))
-                )}
-              </tbody>
-            </table>
+                    ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Fixed Pagination - Non-scrolling section */}
-        <div
-          style={{
-            borderTop: '1px solid rgba(58, 53, 65, 0.12)',
-            width: '100%'
-          }}
-        >
-          <TablePagination
-            component={() => <TablePaginationComponent table={table} />}
-            count={table.getFilteredRowModel().rows.length}
-            rowsPerPage={pageSize}
-            page={pageIndex}
-            onPageChange={(_, page) => {
-              setPageIndex(page)
-              table.setPageIndex(page)
+        {!detailsLoading && actDetails.length > 0 && (
+          <div
+            style={{
+              borderTop: '1px solid rgba(58, 53, 65, 0.12)',
+              width: '100%'
             }}
-            onRowsPerPageChange={e => {
-              const size = parseInt(e.target.value, 10)
-              setPageSize(size)
-              table.setPageSize(size)
-              setPageIndex(0)
-              table.setPageIndex(0)
-            }}
-          />
-        </div>
+          >
+            <TablePagination
+              component={() => <TablePaginationComponent table={table} />}
+              count={table.getFilteredRowModel().rows.length}
+              rowsPerPage={pageSize}
+              page={pageIndex}
+              onPageChange={(_, page) => {
+                setPageIndex(page)
+                table.setPageIndex(page)
+              }}
+              onRowsPerPageChange={e => {
+                const size = parseInt(e.target.value, 10)
+                setPageSize(size)
+                table.setPageSize(size)
+                setPageIndex(0)
+                table.setPageIndex(0)
+              }}
+            />
+          </div>
+        )}
       </Card>
 
       {/* Export Format Dialog */}
       <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)} maxWidth='xs' fullWidth>
-        {/* Dialog content remains the same */}
+        <DialogTitle>Export Format</DialogTitle>
+        <DialogContent>
+          <div className='flex flex-col gap-4 pt-4'>
+            <Button
+              variant={exportFormat === 'pdf' ? 'contained' : 'outlined'}
+              onClick={() => setExportFormat('pdf')}
+              fullWidth
+            >
+              PDF
+            </Button>
+            <Button
+              variant={exportFormat === 'excel' ? 'contained' : 'outlined'}
+              onClick={() => setExportFormat('excel')}
+              fullWidth
+            >
+              Excel
+            </Button>
+          </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExportDialogOpen(false)} color='secondary'>
+            Cancel
+          </Button>
+          <Button onClick={handleExport} variant='contained'>
+            Export
+          </Button>
+        </DialogActions>
       </Dialog>
+
+      {/* Component Dialogs */}
       <AddExcel open={excelDialogOpen} setOpen={setExcelDialogOpen} onSuccess={handleExcelUploadSuccess} />
       <AddCompliance open={openModal} setOpen={setOpenModal} onSuccess={handleExcelUploadSuccess} />
       <TransferCompliance
@@ -612,6 +852,32 @@ const ComplianceMasterTable = ({
         setOpen={setTransferDialogOpen}
         onSuccess={handleExcelUploadSuccess}
       />
+      <CopyCompliance open={copyComplianceOpen} setOpen={setCopyComplianceOpen} onSuccess={handleExcelUploadSuccess} />
+      <Dialog
+        open={exportComplianceOpen}
+        onClose={() => setExportComplianceOpen(false)}
+        maxWidth='xl'
+        fullWidth
+        sx={{ '& .MuiDialog-paper': { overflow: 'visible' } }}
+      >
+        <DialogTitle>
+          Export Compliance
+          <IconButton
+            aria-label='close'
+            onClick={() => setExportComplianceOpen(false)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8
+            }}
+          >
+            <i className='tabler-x' />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <ExportCompliance />
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

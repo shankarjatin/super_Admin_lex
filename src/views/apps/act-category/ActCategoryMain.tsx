@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography'
 // Component Imports
 import ComplianceMasterTable from '@/views/apps/compliance-master/ComplianceMasterTable'
 import ExportArchiveTable from '@/views/apps/compliance-master/ExportArchive'
+import ViewActsTable from './ViewActsTable'
 
 // Define props type for TabsBasic
 type TabsBasicProps = {
@@ -30,11 +31,11 @@ const TabsBasic = ({ actDetails }: TabsBasicProps) => {
   return (
     <TabContext value={value}>
       <TabList onChange={handleChange} aria-label='compliance tabs'>
-        <Tab value='1' label='Future Compliance' />
-        <Tab value='2' label='Export Archive' />
+        <Tab value='1' label='View for acts' />
+        <Tab value='2' label='View for dossier' />
       </TabList>
       <TabPanel value='1'>
-        <ComplianceMasterTable data={actDetails} />
+        <ViewActsTable />
       </TabPanel>
       <TabPanel value='2'>
         <ExportArchiveTable />

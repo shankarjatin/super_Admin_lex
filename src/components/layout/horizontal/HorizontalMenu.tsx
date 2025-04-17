@@ -102,8 +102,8 @@ const HorizontalMenu = () => {
         <MenuItem href='/due-date-change' icon={<i className='tabler-info-circle' />}>
           DUE DATE CHANGE
         </MenuItem>
-        <MenuItem href='/act-wise-email' icon={<i className='tabler-info-circle' />}>
-          ACT WISE EMAIL
+        <MenuItem href='/event-master' icon={<i className='tabler-info-circle' />}>
+          EVENT MASTER
         </MenuItem>
         <MenuItem href='/update-compilance' icon={<i className='tabler-info-circle' />}>
           UPDATE COMPILANCE

@@ -6,7 +6,7 @@ import { Card, CardHeader } from '@mui/material'
 const ComplianceMaster = () => {
   return (
     <Card>
-      <CardHeader title='Compliance Master' />
+      <CardHeader title='Compliance Event' />
       <ComplianceEventTable />
     </Card>
   )

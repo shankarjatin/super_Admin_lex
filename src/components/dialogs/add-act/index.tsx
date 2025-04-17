@@ -16,147 +16,139 @@ import MenuItem from '@mui/material/MenuItem'
 import Switch from '@mui/material/Switch'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import InputAdornment from '@mui/material/InputAdornment'
-import axios from 'axios'
-import https from 'https'
 import CircularProgress from '@mui/material/CircularProgress'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
-// Third-party Imports
-import classnames from 'classnames'
+import FormControl from '@mui/material/FormControl'
+import FormLabel from '@mui/material/FormLabel'
+import RadioGroup from '@mui/material/RadioGroup'
+import Radio from '@mui/material/Radio'
 
-// Type Import
-import type { CustomInputVerticalData } from '@core/components/custom-inputs/types'
+// Third-party Imports
+import axios from 'axios'
+import https from 'https'
 
 // Component Imports
-import CustomInputVertical from '@core/components/custom-inputs/Vertical'
 import DialogCloseButton from '../DialogCloseButton'
 import CustomTextField from '@core/components/mui/TextField'
+
+// Country lists by continent
+const countriesByContinent = {
+  asia: ['Afghanistan', 'Brunei', 'China', 'India', 'Japan', 'Malaysia', 'Singapore', 'Thailand'],
+  europe: ['France', 'Germany', 'Italy', 'Spain', 'UK', 'Russia'],
+  'north-america': ['Canada', 'Mexico', 'USA'],
+  'south-america': ['Argentina', 'Brazil', 'Chile', 'Colombia'],
+  australia: ['Australia', 'New Zealand', 'Fiji'],
+  africa: ['Egypt', 'Kenya', 'Nigeria', 'South Africa']
+}
 
 type AddEditActData = {
   id?: string
   name?: string
-  firstName?: string
-  lastName?: string
   actName?: string
-  country?: string
-  act1?: string
-  act2?: string
-  landmark?: string
-  city?: string
-  state?: string
-  zipCode?: string
   act_desc?: string
   url?: string
   category?: string
-  type?: string
   continent?: string
+  country?: string
+  type?: string
   region?: string
   subject1?: string
+  status?: boolean
+  industryType?: 'service' | 'manufacturing' | 'trading'
 }
 
 type AddEditActProps = {
   open: boolean
   setOpen: (open: boolean) => void
   data?: AddEditActData
+  onSuccess?: () => void
 }
 
-const countries = ['Select Country', 'France', 'Russia', 'China', 'UK', 'US']
-
-const initialActData: AddEditActProps['data'] = {
-  id: '0', // Set default id to '0'
-  firstName: '',
-  lastName: '',
-  country: '',
-  act1: '',
-  act2: '',
-  landmark: '',
-  city: '',
-  state: '',
-  zipCode: ''
-}
-
-const customInputData: CustomInputVerticalData[] = [
-  {
-    title: 'Home',
-    content: 'Delivery Time (7am - 9pm)',
-    value: 'home',
-    isSelected: true,
-    asset: 'tabler-home'
-  },
-  {
-    title: 'Office',
-    content: 'Delivery Time (10am - 6pm)',
-    value: 'office',
-    asset: 'tabler-building-skyscraper'
-  }
-]
 const axiosInstance = axios.create({
   httpsAgent: new https.Agent({
     rejectUnauthorized: false
   })
 })
 
-const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
-  // Vars
-  const initialSelected: string = customInputData?.find(item => item.isSelected)?.value || ''
+const initialActData: AddEditActData = {
+  id: '0',
+  name: '',
+  actName: '',
+  act_desc: '',
+  url: '',
+  category: 'internal',
+  continent: 'asia',
+  country: '',
+  type: 'central',
+  region: '',
+  subject1: '',
+  status: true,
+  industryType: 'service'
+}
 
+const AddEditAct = ({ open, setOpen, data, onSuccess }: AddEditActProps) => {
   // States
-  const [selected, setSelected] = useState<string>(initialSelected)
-  const [actData, setActData] = useState<AddEditActProps['data']>(initialActData)
+  const [actData, setActData] = useState<AddEditActData>(initialActData)
   const [loading, setLoading] = useState(false)
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success' as 'success' | 'error'
   })
+  const [availableCountries, setAvailableCountries] = useState<string[]>(countriesByContinent.asia || [])
+
   // Function to close snackbar
   const handleSnackbarClose = () => {
     setSnackbar({ ...snackbar, open: false })
   }
-  const handleChange = (prop: string | ChangeEvent<HTMLInputElement>) => {
-    if (typeof prop === 'string') {
-      setSelected(prop)
-    } else {
-      setSelected((prop.target as HTMLInputElement).value)
-    }
+
+  // Handle continent change and update country options
+  const handleContinentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const continent = e.target.value
+    setActData({ ...actData, continent, country: '' })
+    setAvailableCountries(countriesByContinent[continent as keyof typeof countriesByContinent] || [])
   }
 
+  // Reset form when dialog closes or new data is provided
   useEffect(() => {
-    // Ensure the ID is always '0' even when data is provided
-    setActData({ ...initialActData, ...(data || {}), id: '0' })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (data) {
+      setActData({ ...initialActData, ...data })
+
+      // Update country list based on provided continent
+      if (data.continent) {
+        setAvailableCountries(countriesByContinent[data.continent as keyof typeof countriesByContinent] || [])
+      }
+    } else {
+      setActData(initialActData)
+      setAvailableCountries(countriesByContinent.asia || [])
+    }
   }, [open, data])
 
-  // Handle form submission
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Always ensure ID is '0' before submitting
-    const formData = { ...actData, id: '0' }
-
-    console.log('Submitting form data with ID=0:', formData)
-
-    // Send data to API
     try {
       setLoading(true)
 
       // Format data as needed by the API
       const apiRequestData = {
-        name: formData.name,
-        act_desc: formData.act_desc,
-        subject: formData.subject1,
-        url: formData.url,
-        industry_type: formData.type,
-        continent: formData.continent,
-        country: formData.country || '',
-        region: formData.region || '',
-        state: formData.state || '',
-        category: formData.category || 'statutory',
-        edit: '0'
+        name: actData.name,
+        actName: actData.actName,
+        act_desc: actData.act_desc,
+        url: actData.url,
+        category: actData.category,
+        continent: actData.continent,
+        country: actData.country || '',
+        type: actData.type,
+        region: actData.region || '',
+        subject1: actData.subject1,
+        status: actData.status ? 'yes' : 'no',
+        industryType: actData.industryType,
+        edit: data && data.id && data.id !== '0' ? '1' : '0',
+        id: data && data.id ? data.id : '0'
       }
-
-      console.log('Sending data to API:', apiRequestData)
 
       // Make the API call
       const response = await axiosInstance.post(
@@ -169,26 +161,23 @@ const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
         }
       )
 
-      console.log('API Response:', response.data)
-
       // Show success message
       setSnackbar({
         open: true,
-        message: 'Act created successfully!',
+        message: data?.id ? 'Act updated successfully!' : 'Act created successfully!',
         severity: 'success'
       })
 
-      // Close the dialog after a short delay
+      // Close dialog and call success callback after delay
       setTimeout(() => {
         setOpen(false)
-      }, 1000)
+        if (onSuccess) onSuccess()
+      }, 1500)
     } catch (error) {
-      console.error('Error creating act:', error)
-
-      // Show error message
+      console.error('Error saving act:', error)
       setSnackbar({
         open: true,
-        message: 'Failed to create act. Please try again.',
+        message: 'Failed to save act. Please try again.',
         severity: 'error'
       })
     } finally {
@@ -200,29 +189,31 @@ const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
     <Dialog
       open={open}
       maxWidth='md'
+      fullWidth
       scroll='body'
-      onClose={() => {
-        setOpen(false)
-        setSelected(initialSelected)
-      }}
+      onClose={() => !loading && setOpen(false)}
       sx={{ '& .MuiDialog-paper': { overflow: 'visible' } }}
     >
       <DialogTitle variant='h4' className='flex gap-2 flex-col text-center sm:pbs-12 sm:pbe-6 sm:pli-12'>
-        {data ? 'Edit Act' : 'Add New Act'}
+        {data && data.id && data.id !== '0' ? 'Edit Act' : 'Add New Act'}
         <Typography component='span' className='flex flex-col text-center'>
-          {data ? 'Edit Act for future billing' : 'Add act for billing act'}
+          {data && data.id && data.id !== '0' ? 'Edit existing act details' : 'Create a new act in the system'}
         </Typography>
       </DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent className='pbs-0 sm:pli-16'>
-          <DialogCloseButton onClick={() => setOpen(false)} disableRipple>
+          <DialogCloseButton onClick={() => !loading && setOpen(false)} disableRipple disabled={loading}>
             <i className='tabler-x' />
           </DialogCloseButton>
 
-          {/* Hidden ID field - always set to '0' */}
-          <input type='hidden' name='id' value='0' />
+          {loading && (
+            <div className='flex justify-center mt-4 mb-8'>
+              <CircularProgress />
+            </div>
+          )}
 
           <Grid container spacing={6}>
+            {/* Name Field */}
             <Grid item xs={12} sm={6}>
               <CustomTextField
                 fullWidth
@@ -230,59 +221,75 @@ const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
                 name='name'
                 required
                 placeholder='Enter Name'
-                value={actData?.name}
+                value={actData?.name || ''}
                 onChange={e => setActData({ ...actData, name: e.target.value })}
+                disabled={loading}
               />
             </Grid>
+
+            {/* Act Name Field */}
             <Grid item xs={12} sm={6}>
               <CustomTextField
                 fullWidth
-                label='Region (Optional)'
-                name='region'
-                placeholder='Enter Region'
-                value={actData?.region || ''}
-                onChange={e => setActData({ ...actData, region: e.target.value })}
+                label='Act Name'
+                name='actName'
+                placeholder='Enter Act Name'
+                value={actData?.actName || ''}
+                onChange={e => setActData({ ...actData, actName: e.target.value })}
+                disabled={loading}
               />
             </Grid>
+
+            {/* Description Field */}
             <Grid item xs={12}>
               <CustomTextField
                 fullWidth
                 multiline
                 required
-                rows={2}
+                rows={3}
                 label='Description'
                 name='act_desc'
                 placeholder='Act Description'
                 inputProps={{ maxLength: 220 }}
-                value={actData?.act_desc}
+                value={actData?.act_desc || ''}
                 onChange={e => setActData({ ...actData, act_desc: e.target.value })}
+                disabled={loading}
+                helperText={`${220 - (actData?.act_desc?.length || 0)} chars left`}
               />
-              <Typography variant='caption' className='text-right block'>
-                {220 - (actData?.act_desc?.length || 0)} chars left
-              </Typography>
             </Grid>
+
+            {/* URL Field */}
             <Grid item xs={12} sm={6}>
               <CustomTextField
                 fullWidth
                 label='URL'
                 name='url'
                 placeholder='http://www.XYZ.com'
-                value={actData?.url}
+                value={actData?.url || ''}
                 onChange={e => setActData({ ...actData, url: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <CustomTextField
-                fullWidth
-                required
-                label='Subject 1'
-                name='subject1'
-                placeholder='Enter Subject'
-                value={actData?.subject1 || ''}
-                onChange={e => setActData({ ...actData, subject1: e.target.value })}
+                disabled={loading}
               />
             </Grid>
 
+            {/* Category Dropdown */}
+            <Grid item xs={12} sm={6}>
+              <CustomTextField
+                select
+                fullWidth
+                label='Category'
+                name='category'
+                required
+                value={actData?.category || 'internal'}
+                onChange={e => setActData({ ...actData, category: e.target.value })}
+                disabled={loading}
+              >
+                <MenuItem value='internal'>Internal</MenuItem>
+                <MenuItem value='external'>External</MenuItem>
+                <MenuItem value='statutory'>Statutory</MenuItem>
+              </CustomTextField>
+            </Grid>
+
+            {/* Continent Dropdown */}
             <Grid item xs={12} sm={6}>
               <CustomTextField
                 select
@@ -290,8 +297,9 @@ const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
                 label='Continent'
                 name='continent'
                 required
-                value={actData?.continent || ''}
-                onChange={e => setActData({ ...actData, continent: e.target.value })}
+                value={actData?.continent || 'asia'}
+                onChange={handleContinentChange}
+                disabled={loading}
               >
                 <MenuItem value='asia'>Asia</MenuItem>
                 <MenuItem value='europe'>Europe</MenuItem>
@@ -301,6 +309,28 @@ const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
                 <MenuItem value='africa'>Africa</MenuItem>
               </CustomTextField>
             </Grid>
+
+            {/* Country Dropdown - populated based on selected continent */}
+            <Grid item xs={12} sm={6}>
+              <CustomTextField
+                select
+                fullWidth
+                label='Country'
+                name='country'
+                value={actData?.country || ''}
+                onChange={e => setActData({ ...actData, country: e.target.value })}
+                disabled={loading || availableCountries.length === 0}
+              >
+                <MenuItem value=''>Select Country</MenuItem>
+                {availableCountries.map(country => (
+                  <MenuItem key={country} value={country}>
+                    {country}
+                  </MenuItem>
+                ))}
+              </CustomTextField>
+            </Grid>
+
+            {/* Type Dropdown */}
             <Grid item xs={12} sm={6}>
               <CustomTextField
                 select
@@ -308,49 +338,109 @@ const AddEditAct = ({ open, setOpen, data }: AddEditActProps) => {
                 label='Type'
                 name='type'
                 required
-                value={actData?.type || ''}
+                value={actData?.type || 'central'}
                 onChange={e => setActData({ ...actData, type: e.target.value })}
+                disabled={loading}
               >
                 <MenuItem value='central'>Central</MenuItem>
                 <MenuItem value='state'>State</MenuItem>
+                <MenuItem value='local'>Local</MenuItem>
               </CustomTextField>
             </Grid>
 
-            {/* Display the ID in a disabled field (optional - for visibility) */}
-            {/* Uncomment if you want the ID to be visible to the user */}
-            {/*
+            {/* Region Field */}
             <Grid item xs={12} sm={6}>
               <CustomTextField
                 fullWidth
-                label='ID'
-                name='id-display'
-                disabled
-                value='0'
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">#</InputAdornment>,
-                }}
+                label='Region (Optional)'
+                name='region'
+                placeholder='Enter Region'
+                value={actData?.region || ''}
+                onChange={e => setActData({ ...actData, region: e.target.value })}
+                disabled={loading}
               />
             </Grid>
-            */}
+
+            {/* Subject 1 Field */}
+            <Grid item xs={12} sm={6}>
+              <CustomTextField
+                fullWidth
+                required
+                label='Subject 1'
+                name='subject1'
+                placeholder='Enter Subject'
+                value={actData?.subject1 || ''}
+                onChange={e => setActData({ ...actData, subject1: e.target.value })}
+                disabled={loading}
+              />
+            </Grid>
+
+            {/* Status Switch */}
+            <Grid item xs={12} sm={6}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={actData?.status === undefined ? true : actData.status}
+                    onChange={e => setActData({ ...actData, status: e.target.checked })}
+                    name='status'
+                    color='primary'
+                    disabled={loading}
+                  />
+                }
+                label={
+                  <Typography>
+                    Status: <strong>{actData?.status === false ? 'Inactive' : 'Active'}</strong>
+                  </Typography>
+                }
+              />
+            </Grid>
+
+            {/* Industry Type Radio Group */}
+            <Grid item xs={12}>
+              <FormControl component='fieldset' disabled={loading}>
+                <FormLabel component='legend'>Industry Type</FormLabel>
+                <RadioGroup
+                  row
+                  name='industryType'
+                  value={actData?.industryType || 'service'}
+                  onChange={e =>
+                    setActData({ ...actData, industryType: e.target.value as 'service' | 'manufacturing' | 'trading' })
+                  }
+                >
+                  <FormControlLabel value='service' control={<Radio />} label='Service' />
+                  <FormControlLabel value='manufacturing' control={<Radio />} label='Manufacturing' />
+                  <FormControlLabel value='trading' control={<Radio />} label='Trading' />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
           </Grid>
         </DialogContent>
         <DialogActions className='justify-center pbs-0 sm:pbe-16 sm:pli-16'>
-          <Button variant='contained' type='submit'>
-            {data ? 'Update' : 'Submit'}
+          <Button variant='contained' type='submit' disabled={loading}>
+            {loading ? <CircularProgress size={24} /> : data && data.id && data.id !== '0' ? 'Update' : 'Submit'}
           </Button>
           <Button
             variant='tonal'
             color='secondary'
-            onClick={() => {
-              setOpen(false)
-              setSelected(initialSelected)
-            }}
+            onClick={() => !loading && setOpen(false)}
             type='reset'
+            disabled={loading}
           >
             Cancel
           </Button>
         </DialogActions>
       </form>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Dialog>
   )
 }
