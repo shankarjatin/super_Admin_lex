@@ -86,6 +86,7 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
           <MenuItem href='/act-master'>All</MenuItem>
           <MenuItem href='/act-master-international'>International</MenuItem>
           <MenuItem href='/act-category'>Act Category</MenuItem>
+          <MenuItem href='/act-type'>Act Type</MenuItem>
         </SubMenu>
       </Menu>
       <Menu
@@ -98,6 +99,7 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
         <SubMenu label='Compliance Master' icon={<i className='tabler-info-circle' />}>
           <MenuItem href='/compliance-master'>General</MenuItem>
           <MenuItem href='/future-compliance'>Future Compliance</MenuItem>
+          <MenuItem href='/no-mail'>No Mail</MenuItem>
         </SubMenu>
       </Menu>
       <Menu

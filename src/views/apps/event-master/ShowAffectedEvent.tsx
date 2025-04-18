@@ -13,7 +13,6 @@ import Alert from '@mui/material/Alert'
 import {
   DataGrid,
   GridColDef,
-  GridSortModel,
   GridPaginationModel,
   gridPageCountSelector,
   useGridApiContext,
@@ -25,6 +24,18 @@ import TextField from '@mui/material/TextField'
 import InputAdornment from '@mui/material/InputAdornment'
 import Divider from '@mui/material/Divider'
 import Chip from '@mui/material/Chip'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
+import Button from '@mui/material/Button'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
+import Paper from '@mui/material/Paper'
 
 // Third-party Imports
 import axios from 'axios'
@@ -72,6 +83,19 @@ interface ApiResponse {
     pageSize: string
   }
   totalItems: number
+}
+
+// Define interface for event compliance detail modal
+interface EventComplianceDetail {
+  id: number
+  period: string
+  sub_head: string
+  description: string
+  criticality: string
+  periodicity: string
+  department: string
+  status: string
+  [key: string]: any // For any additional fields
 }
 
 // Row type for DataGrid
@@ -126,7 +150,7 @@ function CustomPagination(props) {
 }
 
 const ShowAffectedEvent = () => {
-  // States for data management
+  // States for main data management
   const [rows, setRows] = useState<AffectedEventRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -139,6 +163,22 @@ const ShowAffectedEvent = () => {
     page: 1,
     limit: 10
   })
+  interface EventComplianceDetail {
+    compliance_id: string
+    compliance_description: string
+    compliance_section: string
+    compliance_rule: string
+    compliance_sub_head: string
+    compliance_criticality: string
+  }
+
+  // States for detailed modal
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalData, setModalData] = useState<EventComplianceDetail[]>([])
+  const [modalLoading, setModalLoading] = useState(false)
+  const [modalError, setModalError] = useState<string | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<string>('')
+  const [selectedAct, setSelectedAct] = useState<ComplianceAct | null>(null)
 
   // Force paginationModel to always sync with apiParams
   const paginationModel: GridPaginationModel = {
@@ -197,6 +237,39 @@ const ShowAffectedEvent = () => {
       setLoading(false)
     }
   }, [])
+
+  // Fetch detailed event compliance data for modal
+  const fetchEventComplianceDetails = async (actId: number, eventName: string) => {
+    setModalLoading(true)
+    setModalError(null)
+
+    try {
+      const response = await axiosInstance.get(
+        `/eventMaster/getEventComplianceShow?actId=${actId}&event=${encodeURIComponent(eventName)}`
+      )
+
+      if (response.data && response.data.success && response.data.data) {
+        setModalData(response.data.data)
+      } else {
+        throw new Error('Invalid response from API')
+      }
+    } catch (error) {
+      console.error('Error fetching event compliance details:', error)
+      setModalError(error.message || 'Failed to load compliance details')
+      setModalData([])
+    } finally {
+      setModalLoading(false)
+    }
+  }
+
+  // Handle act chip click to open modal with details
+  const handleActClick = (act: ComplianceAct, eventName: string) => {
+    setSelectedEvent(eventName)
+    setSelectedAct(act)
+    setModalData([]) // Reset previous data
+    setModalOpen(true)
+    fetchEventComplianceDetails(act.act_id, eventName)
+  }
 
   // Handle parameter changes
   const handleParamsChange = (newParams: Partial<ApiParams>) => {
@@ -263,6 +336,7 @@ const ShowAffectedEvent = () => {
       sortable: false,
       renderCell: (params: GridRenderCellParams) => {
         const complianceActs = params.value as ComplianceAct[]
+        const eventName = params.row.event as string
 
         if (!complianceActs || complianceActs.length === 0) {
           return <Typography>None</Typography>
@@ -277,7 +351,17 @@ const ShowAffectedEvent = () => {
                 size='small'
                 color='primary'
                 variant='outlined'
-                sx={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                onClick={() => handleActClick(item, eventName)}
+                sx={{
+                  maxWidth: '100%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    backgroundColor: 'primary.light',
+                    color: 'primary.contrastText'
+                  }
+                }}
               />
             ))}
           </div>
@@ -299,95 +383,187 @@ const ShowAffectedEvent = () => {
   }
 
   return (
-    <Card>
-      <CardHeader
-        title='Affected Events & Acts'
-        action={
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <IconButton onClick={handleRefresh} disabled={loading}>
-              {loading ? <CircularProgress size={24} /> : <i className='tabler-refresh' />}
-            </IconButton>
-          </Box>
-        }
-      />
+    <>
+      <Card>
+        <CardHeader
+          title='Affected Events & Acts'
+          action={
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <IconButton onClick={handleRefresh} disabled={loading}>
+                {loading ? <CircularProgress size={24} /> : <i className='tabler-refresh' />}
+              </IconButton>
+            </Box>
+          }
+        />
 
-      <Divider />
+        <Divider />
 
-      {/* Add search input */}
-      <Box sx={{ p: 2 }}>
-        <TextField
-          size='small'
-          value={searchValue}
-          onChange={e => setSearchValue(e.target.value)}
-          placeholder='Search Events...'
-          sx={{ minWidth: 300 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position='start'>
-                <i className='tabler-search text-xl' />
-              </InputAdornment>
-            ),
-            endAdornment: searchValue ? (
-              <InputAdornment position='end'>
-                <IconButton size='small' onClick={() => setSearchValue('')}>
-                  <i className='tabler-x' />
-                </IconButton>
-              </InputAdornment>
-            ) : null
+        {/* Add search input */}
+        <Box sx={{ p: 2 }}>
+          <TextField
+            size='small'
+            value={searchValue}
+            onChange={e => setSearchValue(e.target.value)}
+            placeholder='Search Events...'
+            sx={{ minWidth: 300 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position='start'>
+                  <i className='tabler-search text-xl' />
+                </InputAdornment>
+              ),
+              endAdornment: searchValue ? (
+                <InputAdornment position='end'>
+                  <IconButton size='small' onClick={() => setSearchValue('')}>
+                    <i className='tabler-x' />
+                  </IconButton>
+                </InputAdornment>
+              ) : null
+            }}
+          />
+        </Box>
+
+        <Divider />
+
+        {/* Error message if API call fails */}
+        {error && (
+          <Alert severity='error' sx={{ mx: 3, mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* DataGrid for affected events and acts */}
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          pagination
+          paginationModel={paginationModel}
+          onPaginationModelChange={handlePaginationModelChange}
+          pageSizeOptions={[10, 25, 50, 100]}
+          rowCount={totalRows}
+          paginationMode='server'
+          filterMode='server'
+          loading={loading}
+          disableRowSelectionOnClick
+          disableColumnMenu
+          autoHeight
+          getRowHeight={() => 'auto'}
+          getEstimatedRowHeight={() => 70}
+          sx={{
+            '& .MuiDataGrid-cell': {
+              py: 2
+            },
+            '& .MuiDataGrid-virtualScroller': {
+              minHeight: '300px'
+            },
+            '& .MuiDataGrid-footerContainer': {
+              borderTop: '1px solid rgba(224, 224, 224, 1)'
+            }
+          }}
+          hideFooterSelectedRowCount
+          slots={{
+            pagination: CustomPagination
+          }}
+          slotProps={{
+            pagination: {
+              labelRowsPerPage: 'Show:',
+              showFirstButton: true,
+              showLastButton: true
+            }
           }}
         />
-      </Box>
+      </Card>
 
-      <Divider />
+      {/* Modal for detailed event compliance information */}
+      <Dialog
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        maxWidth='lg'
+        fullWidth
+        aria-labelledby='event-compliance-details-dialog'
+      >
+        <DialogTitle id='event-compliance-details-dialog'>
+          {selectedAct ? (
+            <Typography variant='h6'>
+              Compliance Details for <strong>{selectedAct.name}</strong>
+              <Typography variant='subtitle1' color='textSecondary'>
+                Event: {selectedEvent}
+              </Typography>
+            </Typography>
+          ) : (
+            'Compliance Details'
+          )}
+        </DialogTitle>
 
-      {/* Error message if API call fails */}
-      {error && (
-        <Alert severity='error' sx={{ mx: 3, mb: 3 }}>
-          {error}
-        </Alert>
-      )}
+        <DialogContent dividers>
+          {modalLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : modalError ? (
+            <Alert severity='error'>{modalError}</Alert>
+          ) : modalData.length > 0 ? (
+            <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
+              <Table stickyHeader aria-label='compliance details table'>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>ID</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell>Section</TableCell>
+                    <TableCell>Rule</TableCell>
+                    <TableCell>Sub Head</TableCell>
+                    <TableCell>Criticality</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {modalData.map(row => (
+                    <TableRow key={row.compliance_id}>
+                      <TableCell>{row.compliance_id}</TableCell>
+                      <TableCell>
+                        <Typography
+                          sx={{
+                            maxWidth: '250px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title={row.compliance_description}
+                        >
+                          {row.compliance_description || 'N/A'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{row.compliance_section || 'N/A'}</TableCell>
+                      <TableCell>{row.compliance_rule || 'N/A'}</TableCell>
+                      <TableCell>{row.compliance_sub_head || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={row.compliance_criticality || 'N/A'}
+                          color={
+                            row.compliance_criticality === 'High'
+                              ? 'error'
+                              : row.compliance_criticality === 'Medium'
+                                ? 'warning'
+                                : 'success'
+                          }
+                          size='small'
+                          variant='tonal'
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Typography sx={{ p: 2 }}>No compliance details found for this selection.</Typography>
+          )}
+        </DialogContent>
 
-      {/* DataGrid for affected events and acts */}
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        pagination
-        paginationModel={paginationModel}
-        onPaginationModelChange={handlePaginationModelChange}
-        pageSizeOptions={[10, 25, 50, 100]}
-        rowCount={totalRows}
-        paginationMode='server'
-        filterMode='server'
-        loading={loading}
-        disableRowSelectionOnClick
-        disableColumnMenu
-        autoHeight
-        getRowHeight={() => 'auto'}
-        getEstimatedRowHeight={() => 70}
-        sx={{
-          '& .MuiDataGrid-cell': {
-            py: 2
-          },
-          '& .MuiDataGrid-virtualScroller': {
-            minHeight: '300px'
-          },
-          '& .MuiDataGrid-footerContainer': {
-            borderTop: '1px solid rgba(224, 224, 224, 1)'
-          }
-        }}
-        hideFooterSelectedRowCount
-        slots={{
-          pagination: CustomPagination
-        }}
-        slotProps={{
-          pagination: {
-            labelRowsPerPage: 'Show:',
-            showFirstButton: true,
-            showLastButton: true
-          }
-        }}
-      />
-    </Card>
+        <DialogActions>
+          <Button onClick={() => setModalOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </>
   )
 }
 
