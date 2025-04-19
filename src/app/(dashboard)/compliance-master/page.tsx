@@ -1,4 +1,3 @@
-import ComplianceEventTable from '@/views/apps/compliance-event/ComplianceEventTable'
 import ComplianceMasterTable from '@/views/apps/compliance-master/ComplianceMasterTable'
 import { Card, CardHeader } from '@mui/material'
 
@@ -7,7 +6,7 @@ const ComplianceMaster = () => {
   return (
     <Card>
       <CardHeader title='Compliance Master' />
-      <ComplianceEventTable />
+      <ComplianceMasterTable />
     </Card>
   )
 }

@@ -113,9 +113,10 @@ const VerticalMenu = ({ scrollMenu }: Props) => {
         <MenuItem href='/company-master' icon={<i className='tabler-info-circle' />}>
           Company Master
         </MenuItem>
-        <MenuItem href='/document-master' icon={<i className='tabler-info-circle' />}>
-          Document Master
-        </MenuItem>
+        <SubMenu label='Docment Master' icon={<i className='tabler-info-circle' />}>
+          <MenuItem href='/document-master'>Document Master</MenuItem>
+          <MenuItem href='/news-feed'>News Feed</MenuItem>
+        </SubMenu>
         <MenuItem href='/form-master' icon={<i className='tabler-info-circle' />}>
           Form Master
         </MenuItem>
